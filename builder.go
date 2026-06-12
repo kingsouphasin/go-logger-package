@@ -24,6 +24,7 @@ func New(cfg Config) (Logger, error) {
 		level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
 	}
 
+	// enc is safe to share across cores: zapcore.NewCore calls enc.Clone() internally.
 	enc := buildEncoder(cfg)
 	var cores []zapcore.Core
 
@@ -65,6 +66,7 @@ func (l *zapLogger) Debugw(msg string, kv ...any) { l.sugar.Debugw(msg, kv...) }
 func (l *zapLogger) Infow(msg string, kv ...any)  { l.sugar.Infow(msg, kv...) }
 func (l *zapLogger) Warnw(msg string, kv ...any)  { l.sugar.Warnw(msg, kv...) }
 func (l *zapLogger) Errorw(msg string, kv ...any) { l.sugar.Errorw(msg, kv...) }
+func (l *zapLogger) Fatalw(msg string, kv ...any) { l.sugar.Fatalw(msg, kv...) }
 
 func (l *zapLogger) With(fields ...zap.Field) Logger {
 	z := l.z.With(fields...)

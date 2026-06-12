@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // Logger is the interface implemented by this package's logger and all child loggers.
@@ -19,6 +20,7 @@ type Logger interface {
 	Infow(msg string, keysAndValues ...any)
 	Warnw(msg string, keysAndValues ...any)
 	Errorw(msg string, keysAndValues ...any)
+	Fatalw(msg string, keysAndValues ...any)
 
 	With(fields ...zap.Field) Logger
 	Named(name string) Logger
@@ -47,7 +49,12 @@ func init() {
 		fmt.Fprintf(os.Stderr, "logger: file output failed (%v), falling back to console\n", err)
 		fallback := cfg
 		fallback.File = false
-		l, _ = New(fallback)
+		l, err = New(fallback)
+	}
+	if err != nil || l == nil {
+		// Last resort: bare stderr logger so the package never has a nil defaultLogger
+		z, _ := zap.NewProduction()
+		l = &zapLogger{z: z, sugar: z.Sugar(), level: zap.NewAtomicLevelAt(zapcore.InfoLevel)}
 	}
 	defaultLogger = l
 }
