@@ -1,0 +1,2 @@
+{"level":"info","time":"2026-06-12T15:56:11.965+0700","msg":"request completed","method":"GET","path":"/test","status":200,"latency":0.000017083}
+{"level":"info","time":"2026-06-12T15:56:11.965+0700","msg":"request completed","method":"GET","path":"/error","status":500,"latency":0.000000959}
