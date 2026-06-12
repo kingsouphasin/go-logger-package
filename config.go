@@ -45,28 +45,28 @@ func LoadConfig() Config {
 		cfg.Level = v
 	}
 	if v := os.Getenv("LOGGER_CALLER"); v != "" {
-		cfg.Caller = parseBool(v, false)
+		cfg.Caller = parseBool(v, cfg.Caller)
 	}
 	if v := os.Getenv("LOGGER_CONSOLE"); v != "" {
-		cfg.Console = parseBool(v, true)
+		cfg.Console = parseBool(v, cfg.Console)
 	}
 	if v := os.Getenv("LOGGER_FILE"); v != "" {
-		cfg.File = parseBool(v, true)
+		cfg.File = parseBool(v, cfg.File)
 	}
 	if v := os.Getenv("LOGGER_FILE_PATH"); v != "" {
 		cfg.FilePath = v
 	}
 	if v := os.Getenv("LOGGER_MAX_SIZE_MB"); v != "" {
-		cfg.MaxSizeMB = parseInt(v, 100)
+		cfg.MaxSizeMB = parseInt(v, cfg.MaxSizeMB)
 	}
 	if v := os.Getenv("LOGGER_MAX_BACKUPS"); v != "" {
-		cfg.MaxBackups = parseInt(v, 30)
+		cfg.MaxBackups = parseInt(v, cfg.MaxBackups)
 	}
 	if v := os.Getenv("LOGGER_MAX_AGE_DAYS"); v != "" {
-		cfg.MaxAgeDays = parseInt(v, 30)
+		cfg.MaxAgeDays = parseInt(v, cfg.MaxAgeDays)
 	}
 	if v := os.Getenv("LOGGER_COMPRESS"); v != "" {
-		cfg.Compress = parseBool(v, false)
+		cfg.Compress = parseBool(v, cfg.Compress)
 	}
 	return cfg
 }

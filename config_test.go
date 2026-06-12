@@ -1,14 +1,19 @@
 package logger
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDefaultConfig(t *testing.T) {
-	os.Clearenv()
+	for _, key := range []string{
+		"LOGGER_ENV", "LOGGER_LEVEL", "LOGGER_CALLER",
+		"LOGGER_CONSOLE", "LOGGER_FILE", "LOGGER_FILE_PATH",
+		"LOGGER_MAX_SIZE_MB", "LOGGER_MAX_BACKUPS", "LOGGER_MAX_AGE_DAYS", "LOGGER_COMPRESS",
+	} {
+		t.Setenv(key, "")
+	}
 	cfg := LoadConfig()
 	assert.Equal(t, "production", cfg.Env)
 	assert.Equal(t, "info", cfg.Level)
