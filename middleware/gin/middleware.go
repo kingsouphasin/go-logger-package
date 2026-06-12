@@ -11,9 +11,13 @@ import (
 func Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
+		path := c.FullPath()
+		if path == "" {
+			path = c.Request.URL.Path
+		}
 		log := logger.With(
 			zap.String("method", c.Request.Method),
-			zap.String("path", c.FullPath()),
+			zap.String("path", path),
 		)
 		ctx := logger.WithContext(c.Request.Context(), log)
 		c.Request = c.Request.WithContext(ctx)

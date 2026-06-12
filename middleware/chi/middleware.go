@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/kingsouphasin/logger"
 	"go.uber.org/zap"
 )
@@ -15,13 +16,18 @@ func Middleware(next http.Handler) http.Handler {
 
 		log := logger.With(
 			zap.String("method", r.Method),
-			zap.String("path", r.URL.Path),
 		)
 		ctx := logger.WithContext(r.Context(), log)
 
 		next.ServeHTTP(rw, r.WithContext(ctx))
 
+		path := r.URL.Path
+		if rctx := chi.RouteContext(r.Context()); rctx != nil && rctx.RoutePattern() != "" {
+			path = rctx.RoutePattern()
+		}
+
 		log.Info("request completed",
+			zap.String("path", path),
 			zap.Int("status", rw.statusCode),
 			zap.Duration("latency", time.Since(start)),
 		)
