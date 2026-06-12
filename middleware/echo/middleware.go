@@ -21,8 +21,13 @@ func Middleware() echo.MiddlewareFunc {
 
 			err := next(c)
 
+			status := c.Response().Status
+			if he, ok := err.(*echo.HTTPError); ok {
+				status = he.Code
+			}
+
 			log.Info("request completed",
-				zap.Int("status", c.Response().Status),
+				zap.Int("status", status),
 				zap.Duration("latency", time.Since(start)),
 			)
 			return err

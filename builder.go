@@ -70,12 +70,12 @@ func (l *zapLogger) Fatalw(msg string, kv ...any) { l.sugar.Fatalw(msg, kv...) }
 
 func (l *zapLogger) With(fields ...zap.Field) Logger {
 	z := l.z.With(fields...)
-	return &zapLogger{z: z, sugar: z.Sugar(), level: l.level}
+	return &zapLogger{z: z, sugar: z.Sugar(), level: l.level, cancel: l.cancel}
 }
 
 func (l *zapLogger) Named(name string) Logger {
 	z := l.z.Named(name)
-	return &zapLogger{z: z, sugar: z.Sugar(), level: l.level}
+	return &zapLogger{z: z, sugar: z.Sugar(), level: l.level, cancel: l.cancel}
 }
 
 func (l *zapLogger) SetLevel(level string) error {

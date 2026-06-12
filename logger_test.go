@@ -36,7 +36,7 @@ func TestGlobalSetLevel(t *testing.T) {
 }
 
 func TestSetDefault(t *testing.T) {
-	original := defaultLogger
+	original := globalLogger.Load().(Logger)
 	defer SetDefault(original)
 
 	cfg := Config{Env: "production", Level: "warn", Console: true, File: false}

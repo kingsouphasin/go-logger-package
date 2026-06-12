@@ -3,6 +3,7 @@ package logger
 import (
 	"fmt"
 	"os"
+	"sync/atomic"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -40,7 +41,7 @@ var (
 	Err      = zap.Error
 )
 
-var defaultLogger Logger
+var globalLogger atomic.Value // stores Logger
 
 func init() {
 	cfg := LoadConfig()
@@ -56,22 +57,27 @@ func init() {
 		z, _ := zap.NewProduction()
 		l = &zapLogger{z: z, sugar: z.Sugar(), level: zap.NewAtomicLevelAt(zapcore.InfoLevel)}
 	}
-	defaultLogger = l
+	globalLogger.Store(l)
+}
+
+func defaultLogger() Logger {
+	return globalLogger.Load().(Logger)
 }
 
 // SetDefault replaces the global default logger. Useful in tests and for custom bootstrap.
-func SetDefault(l Logger) { defaultLogger = l }
+func SetDefault(l Logger) { globalLogger.Store(l) }
 
-func Debug(msg string, fields ...zap.Field)  { defaultLogger.Debug(msg, fields...) }
-func Info(msg string, fields ...zap.Field)   { defaultLogger.Info(msg, fields...) }
-func Warn(msg string, fields ...zap.Field)   { defaultLogger.Warn(msg, fields...) }
-func Error(msg string, fields ...zap.Field)  { defaultLogger.Error(msg, fields...) }
-func Fatal(msg string, fields ...zap.Field)  { defaultLogger.Fatal(msg, fields...) }
-func Debugw(msg string, kv ...any)           { defaultLogger.Debugw(msg, kv...) }
-func Infow(msg string, kv ...any)            { defaultLogger.Infow(msg, kv...) }
-func Warnw(msg string, kv ...any)            { defaultLogger.Warnw(msg, kv...) }
-func Errorw(msg string, kv ...any)           { defaultLogger.Errorw(msg, kv...) }
-func With(fields ...zap.Field) Logger        { return defaultLogger.With(fields...) }
-func Named(name string) Logger               { return defaultLogger.Named(name) }
-func SetLevel(level string) error            { return defaultLogger.SetLevel(level) }
-func Sync() error                            { return defaultLogger.Sync() }
+func Debug(msg string, fields ...zap.Field)  { defaultLogger().Debug(msg, fields...) }
+func Info(msg string, fields ...zap.Field)   { defaultLogger().Info(msg, fields...) }
+func Warn(msg string, fields ...zap.Field)   { defaultLogger().Warn(msg, fields...) }
+func Error(msg string, fields ...zap.Field)  { defaultLogger().Error(msg, fields...) }
+func Fatal(msg string, fields ...zap.Field)  { defaultLogger().Fatal(msg, fields...) }
+func Fatalw(msg string, kv ...any)           { defaultLogger().Fatalw(msg, kv...) }
+func Debugw(msg string, kv ...any)           { defaultLogger().Debugw(msg, kv...) }
+func Infow(msg string, kv ...any)            { defaultLogger().Infow(msg, kv...) }
+func Warnw(msg string, kv ...any)            { defaultLogger().Warnw(msg, kv...) }
+func Errorw(msg string, kv ...any)           { defaultLogger().Errorw(msg, kv...) }
+func With(fields ...zap.Field) Logger        { return defaultLogger().With(fields...) }
+func Named(name string) Logger               { return defaultLogger().Named(name) }
+func SetLevel(level string) error            { return defaultLogger().SetLevel(level) }
+func Sync() error                            { return defaultLogger().Sync() }
