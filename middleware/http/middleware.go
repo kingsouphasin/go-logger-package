@@ -58,7 +58,7 @@ func Middleware() func(http.Handler) http.Handler {
 			log.Info("request completed",
 				zap.Int("status", rw.statusCode),
 				zap.Int("response_size", rw.size),
-				zap.Duration("latency", time.Since(start)),
+				zap.String("latency", time.Since(start).String()),
 			)
 		})
 	}

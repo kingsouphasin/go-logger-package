@@ -61,7 +61,7 @@ func Middleware() echo.MiddlewareFunc {
 			log.Info("request completed",
 				zap.Int("status", status),
 				zap.Int64("response_size", c.Response().Size),
-				zap.Duration("latency", time.Since(start)),
+				zap.String("latency", time.Since(start).String()),
 			)
 			return err
 		}

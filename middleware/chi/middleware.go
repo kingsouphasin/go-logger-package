@@ -63,7 +63,7 @@ func Middleware(next http.Handler) http.Handler {
 			zap.String("path", path),
 			zap.Int("status", rw.statusCode),
 			zap.Int("response_size", rw.size),
-			zap.Duration("latency", time.Since(start)),
+			zap.String("latency", time.Since(start).String()),
 		)
 	})
 }

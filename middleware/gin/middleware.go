@@ -60,7 +60,7 @@ func Middleware() gin.HandlerFunc {
 		log.Info("request completed",
 			zap.Int("status", c.Writer.Status()),
 			zap.Int("response_size", c.Writer.Size()),
-			zap.Duration("latency", time.Since(start)),
+			zap.String("latency", time.Since(start).String()),
 		)
 	}
 }

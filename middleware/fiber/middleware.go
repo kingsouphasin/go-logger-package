@@ -55,7 +55,7 @@ func Middleware() fiber.Handler {
 		log.Info("request completed",
 			zap.Int("status", c.Response().StatusCode()),
 			zap.Int("response_size", len(c.Response().Body())),
-			zap.Duration("latency", time.Since(start)),
+			zap.String("latency", time.Since(start).String()),
 		)
 		return err
 	}
