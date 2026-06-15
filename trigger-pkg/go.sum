@@ -4,6 +4,8 @@ github.com/kingsouphasin/go-logger-package v1.0.2 h1:0oYtr7tDtMLpNB/7zJbF5dtarR+
 github.com/kingsouphasin/go-logger-package v1.0.2/go.mod h1:jEDEATIvWHHFD5oMuHqmLiIAU+y2PvJ/78aRb9yzxMM=
 github.com/kingsouphasin/go-logger-package v1.0.5 h1:7g0Ku6Q/ZJV07cBhg/vZX9aLnCI67Zfjrpi51mOqUI8=
 github.com/kingsouphasin/go-logger-package v1.0.5/go.mod h1:jEDEATIvWHHFD5oMuHqmLiIAU+y2PvJ/78aRb9yzxMM=
+github.com/kingsouphasin/go-logger-package v1.0.6 h1:WIBdTjoDrbrI1FaRdOY5MhTO0q6GfqcxzfQH+jJiK60=
+github.com/kingsouphasin/go-logger-package v1.0.6/go.mod h1:jEDEATIvWHHFD5oMuHqmLiIAU+y2PvJ/78aRb9yzxMM=
 go.uber.org/multierr v1.10.0 h1:S0h4aNzvfcFsC3dRF1jLoaov7oRaKqRGC/pUEJ2yvPQ=
 go.uber.org/multierr v1.10.0/go.mod h1:20+QtiLqy0Nd6FdQB9TLXag12DsQkrbs3htMFfDN80Y=
 go.uber.org/zap v1.28.0 h1:IZzaP1Fv73/T/pBMLk4VutPl36uNC+OSUh3JLG3FIjo=
