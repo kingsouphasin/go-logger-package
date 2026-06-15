@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/kingsouphasin/logger"
+	"github.com/kingsouphasin/go-logger-package"
 )
 
 func main() {

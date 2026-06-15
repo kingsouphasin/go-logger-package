@@ -3,7 +3,7 @@
 A production-ready Go structured logger built on [zap](https://github.com/uber-go/zap), with dual console + file output, automatic log rotation, and drop-in middleware for the most common Go HTTP frameworks.
 
 ```
-github.com/kingsouphasin/logger
+github.com/kingsouphasin/go-logger-package
 ```
 
 ---
@@ -27,7 +27,7 @@ github.com/kingsouphasin/logger
 ## Repository Structure
 
 ```
-github.com/kingsouphasin/logger        ← core package (zero dependencies on any framework)
+github.com/kingsouphasin/go-logger-package        ← core package (zero dependencies on any framework)
 ├── middleware/
 │   ├── http/                          ← net/http middleware
 │   ├── gin/                           ← Gin middleware
@@ -46,17 +46,17 @@ Each middleware lives in its own Go module, so importing only the core package d
 ## Installation
 
 ```bash
-go get github.com/kingsouphasin/logger
+go get github.com/kingsouphasin/go-logger-package
 ```
 
 Install only the middleware for the framework you use:
 
 ```bash
-go get github.com/kingsouphasin/logger/middleware/http    # net/http
-go get github.com/kingsouphasin/logger/middleware/gin     # Gin
-go get github.com/kingsouphasin/logger/middleware/echo    # Echo
-go get github.com/kingsouphasin/logger/middleware/fiber   # Fiber
-go get github.com/kingsouphasin/logger/middleware/chi     # Chi
+go get github.com/kingsouphasin/go-logger-package/middleware/http    # net/http
+go get github.com/kingsouphasin/go-logger-package/middleware/gin     # Gin
+go get github.com/kingsouphasin/go-logger-package/middleware/echo    # Echo
+go get github.com/kingsouphasin/go-logger-package/middleware/fiber   # Fiber
+go get github.com/kingsouphasin/go-logger-package/middleware/chi     # Chi
 ```
 
 ---
@@ -153,7 +153,7 @@ No setup required. Import and log:
 ```go
 package main
 
-import "github.com/kingsouphasin/logger"
+import "github.com/kingsouphasin/go-logger-package"
 
 func main() {
     defer logger.Sync()
@@ -224,7 +224,7 @@ package main
 
 import (
     "fmt"
-    "github.com/kingsouphasin/logger"
+    "github.com/kingsouphasin/go-logger-package"
 )
 
 func main() {
@@ -345,8 +345,8 @@ package main
 import (
     "net/http"
 
-    "github.com/kingsouphasin/logger"
-    httplogger "github.com/kingsouphasin/logger/middleware/http"
+    "github.com/kingsouphasin/go-logger-package"
+    httplogger "github.com/kingsouphasin/go-logger-package/middleware/http"
 )
 
 func main() {
@@ -376,8 +376,8 @@ package main
 
 import (
     "github.com/gin-gonic/gin"
-    "github.com/kingsouphasin/logger"
-    ginlogger "github.com/kingsouphasin/logger/middleware/gin"
+    "github.com/kingsouphasin/go-logger-package"
+    ginlogger "github.com/kingsouphasin/go-logger-package/middleware/gin"
 )
 
 func main() {
@@ -409,8 +409,8 @@ package main
 import (
     "net/http"
 
-    "github.com/kingsouphasin/logger"
-    echologger "github.com/kingsouphasin/logger/middleware/echo"
+    "github.com/kingsouphasin/go-logger-package"
+    echologger "github.com/kingsouphasin/go-logger-package/middleware/echo"
     "github.com/labstack/echo/v4"
 )
 
@@ -444,8 +444,8 @@ package main
 
 import (
     "github.com/gofiber/fiber/v2"
-    "github.com/kingsouphasin/logger"
-    fiberlogger "github.com/kingsouphasin/logger/middleware/fiber"
+    "github.com/kingsouphasin/go-logger-package"
+    fiberlogger "github.com/kingsouphasin/go-logger-package/middleware/fiber"
 )
 
 func main() {
@@ -478,8 +478,8 @@ import (
     "net/http"
 
     "github.com/go-chi/chi/v5"
-    "github.com/kingsouphasin/logger"
-    chilogger "github.com/kingsouphasin/logger/middleware/chi"
+    "github.com/kingsouphasin/go-logger-package"
+    chilogger "github.com/kingsouphasin/go-logger-package/middleware/chi"
 )
 
 func main() {

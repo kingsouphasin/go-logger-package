@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/kingsouphasin/logger"
+	"github.com/kingsouphasin/go-logger-package"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )

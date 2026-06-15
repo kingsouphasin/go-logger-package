@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/kingsouphasin/logger"
+	"github.com/kingsouphasin/go-logger-package"
 	"github.com/stretchr/testify/assert"
 )
 

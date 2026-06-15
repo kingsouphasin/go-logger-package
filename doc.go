@@ -8,7 +8,7 @@
 // The package initializes a global default logger automatically on import.
 // No setup is required:
 //
-//	import "github.com/kingsouphasin/logger"
+//	import "github.com/kingsouphasin/go-logger-package"
 //
 //	logger.Info("server started", logger.String("port", "8080"))
 //	logger.Warn("high memory", logger.Int("mb", 512))
@@ -75,11 +75,11 @@
 // Framework-specific middleware packages are available as separate modules
 // so that importing the core package does not pull in framework dependencies:
 //
-//	github.com/kingsouphasin/logger/middleware/http   — net/http
-//	github.com/kingsouphasin/logger/middleware/gin    — Gin
-//	github.com/kingsouphasin/logger/middleware/echo   — Echo
-//	github.com/kingsouphasin/logger/middleware/fiber  — Fiber
-//	github.com/kingsouphasin/logger/middleware/chi    — Chi
+//	github.com/kingsouphasin/go-logger-package/middleware/http   — net/http
+//	github.com/kingsouphasin/go-logger-package/middleware/gin    — Gin
+//	github.com/kingsouphasin/go-logger-package/middleware/echo   — Echo
+//	github.com/kingsouphasin/go-logger-package/middleware/fiber  — Fiber
+//	github.com/kingsouphasin/go-logger-package/middleware/chi    — Chi
 //
 // Each middleware automatically generates or propagates a request_id
 // (read from the X-Request-ID header or generated as a UUID v4), attaches

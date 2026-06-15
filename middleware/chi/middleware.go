@@ -11,7 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/kingsouphasin/logger"
+	"github.com/kingsouphasin/go-logger-package"
 	"go.uber.org/zap"
 )
 

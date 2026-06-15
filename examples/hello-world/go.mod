@@ -1,8 +1,8 @@
-module github.com/kingsouphasin/logger/examples/hello-world
+module github.com/kingsouphasin/go-logger-package/examples/hello-world
 
 go 1.25.0
 
-require github.com/kingsouphasin/logger v0.0.0
+require github.com/kingsouphasin/go-logger-package v0.0.0
 
 require (
 	github.com/joho/godotenv v1.5.1 // indirect
@@ -11,4 +11,4 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )
 
-replace github.com/kingsouphasin/logger => ../../
+replace github.com/kingsouphasin/go-logger-package => ../../

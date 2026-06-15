@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kingsouphasin/logger"
+	"github.com/kingsouphasin/go-logger-package"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 )

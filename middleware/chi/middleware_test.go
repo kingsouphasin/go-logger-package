@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/kingsouphasin/logger"
+	"github.com/kingsouphasin/go-logger-package"
 	"github.com/stretchr/testify/assert"
 )
 

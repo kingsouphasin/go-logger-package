@@ -1,10 +1,10 @@
-module github.com/kingsouphasin/logger/middleware/fiber
+module github.com/kingsouphasin/go-logger-package/middleware/fiber
 
 go 1.25.0
 
 require (
 	github.com/gofiber/fiber/v2 v2.52.13
-	github.com/kingsouphasin/logger v0.0.0
+	github.com/kingsouphasin/go-logger-package v0.0.0
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/zap v1.28.0
 )
@@ -29,4 +29,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/kingsouphasin/logger => ../../
+replace github.com/kingsouphasin/go-logger-package => ../../
