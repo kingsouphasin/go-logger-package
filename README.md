@@ -27,19 +27,19 @@ github.com/kingsouphasin/go-logger-package
 ## Repository Structure
 
 ```
-github.com/kingsouphasin/go-logger-package        ← core package (zero dependencies on any framework)
+github.com/kingsouphasin/go-logger-package          ← core package (no framework deps)
 ├── middleware/
-│   ├── http/                          ← net/http middleware
-│   ├── gin/                           ← Gin middleware
-│   ├── echo/                          ← Echo middleware
-│   ├── fiber/                         ← Fiber middleware
-│   └── chi/                           ← Chi middleware
+│   ├── http/                                        ← net/http middleware
+│   ├── gin/                                         ← Gin middleware
+│   ├── echo/                                        ← Echo middleware
+│   ├── fiber/                                       ← Fiber middleware
+│   └── chi/                                         ← Chi middleware
 └── examples/
-    ├── hello-world/                   ← CLI demo: all logger features, no HTTP
-    └── http-server/                   ← HTTP server demo: middleware + request_id
+    ├── hello-world/                                 ← CLI demo: all logger features
+    └── http-server/                                 ← HTTP server demo: middleware + request_id
 ```
 
-Each middleware lives in its own Go module, so importing only the core package does not pull in any framework dependencies.
+Each middleware lives in its own Go module, so importing the core package does not pull in any framework dependencies.
 
 ---
 
@@ -59,21 +59,21 @@ go get github.com/kingsouphasin/go-logger-package/middleware/fiber   # Fiber
 go get github.com/kingsouphasin/go-logger-package/middleware/chi     # Chi
 ```
 
+> **Import alias required:** because the module path ends in `go-logger-package` instead of `logger`, you must use an explicit alias in your import:
+> ```go
+> import logger "github.com/kingsouphasin/go-logger-package"
+> ```
+
 ---
 
 ## Runnable Examples
 
-Clone the repo and run either example to see the package in action:
-
 ```bash
-# All logger features in a CLI program (no HTTP, no request_id)
-cd examples/hello-world
-go run main.go
+# CLI demo — all logger features, no HTTP
+cd examples/hello-world && go run main.go
 
-# HTTP server with middleware — shows automatic request_id on every log line
-cd examples/http-server
-go run main.go
-# then in another terminal:
+# HTTP server — automatic request_id on every log line
+cd examples/http-server && go run main.go
 curl http://localhost:8080/hello?name=world
 curl -H "X-Request-ID: my-trace-id" http://localhost:8080/order
 ```
@@ -82,30 +82,32 @@ curl -H "X-Request-ID: my-trace-id" http://localhost:8080/order
 
 ## Understanding `request_id`
 
-This is the most important concept in the package. The logger has two distinct modes:
+The logger has two distinct modes:
 
 ### Global logger — for app-level events (no `request_id`)
 
 ```go
+import logger "github.com/kingsouphasin/go-logger-package"
+
 logger.Info("server started", logger.String("port", "8080"))
 ```
 
-- Available everywhere with zero setup
-- **Does not have `request_id`** — there is no HTTP request at this point, so there is nothing to identify
-- Use this for: startup, shutdown, background jobs, cron tasks
+- Available everywhere, zero setup
+- **No `request_id`** — there is no HTTP request here, so there is nothing to identify
+- Use for: startup, shutdown, background jobs, cron tasks
 
 ### Context logger — for request-scoped events (has `request_id`)
 
 ```go
-log := logger.FromContext(ctx)   // or use Handle — see below
-log.Info("processing order")     // automatically includes request_id and all request fields
+log := logger.FromContext(ctx)  // inside a handler — see middleware section
+log.Info("processing order")    // automatically includes request_id + all request fields
 ```
 
 - Retrieved from `context.Context` inside an HTTP handler
-- **Has `request_id`** — the middleware generates/reads it and attaches it before your handler runs
-- Use this for: everything that happens inside an HTTP request
+- **Has `request_id`** — injected by the middleware before your handler runs
+- Use for: everything that happens inside an HTTP request
 
-> **Rule of thumb:** use `logger.Info(...)` for app events. Use `logger.FromContext(ctx)` (or `Handle`) inside HTTP handlers and any service functions they call.
+> **Rule of thumb:** use `logger.Info(...)` for app events. Use `logger.FromContext(ctx)` (or `Handle`) inside handlers and any service functions they call.
 
 ### How `request_id` flows through a request
 
@@ -126,16 +128,11 @@ HTTP Request arrives
 ┌─────────────────────────────────────────────────────┐
 │  Your Handler                                       │
 │                                                     │
-│  // Option A — logger injected by Handle wrapper   │
-│  app.Get("/", handler.Handle(func(c, log) { ... }) │
-│                                                     │
-│  // Option B — retrieve from context manually      │
-│  log := logger.FromContext(r.Context())             │
-│                                                     │
-│  log.Info("doing work")   ← has request_id         │
-│  processOrder(ctx, id)    ← pass ctx down           │
-│    log := FromContext(ctx)                          │
-│    log.Info("order done") ← still has request_id   │
+│  ginlogger.Handle(func(c *gin.Context, log Logger)  │
+│      log.Info("ok")  ← has request_id              │
+│      processOrder(c.Request.Context(), id)          │
+│          log := logger.FromContext(ctx)             │
+│          log.Info("done") ← still has request_id   │
 └─────────────────────────────────────────────────────┘
         │
         ▼
@@ -153,7 +150,7 @@ No setup required. Import and log:
 ```go
 package main
 
-import "github.com/kingsouphasin/go-logger-package"
+import logger "github.com/kingsouphasin/go-logger-package"
 
 func main() {
     defer logger.Sync()
@@ -177,13 +174,13 @@ logger.Errorw("payment failed", "order_id", "ORD-001", "reason", "card declined"
 
 ## Configuration
 
-Create a `.env` file in your project root. All fields are optional — defaults shown below:
+Create a `.env` file in your project root. All fields are optional — defaults shown:
 
 ```env
 # Output format: "development" = colored console, "production" = JSON (default)
 LOGGER_ENV=production
 
-# Minimum level to emit: debug | info | warn | error | fatal
+# Minimum level: debug | info | warn | error | fatal
 LOGGER_LEVEL=info
 
 # Add caller file:line to every log entry
@@ -211,7 +208,7 @@ LOGGER_COMPRESS=false
 
 ### Log rotation
 
-Rotation is triggered by whichever comes first: the file reaching `LOGGER_MAX_SIZE_MB`, or midnight (daily). Old files are cleaned up automatically based on `LOGGER_MAX_BACKUPS` and `LOGGER_MAX_AGE_DAYS`.
+Rotation triggers on whichever comes first: the file reaching `LOGGER_MAX_SIZE_MB`, or midnight (daily). Old files are cleaned up based on `LOGGER_MAX_BACKUPS` and `LOGGER_MAX_AGE_DAYS`.
 
 ---
 
@@ -224,12 +221,12 @@ package main
 
 import (
     "fmt"
-    "github.com/kingsouphasin/go-logger-package"
+    logger "github.com/kingsouphasin/go-logger-package"
 )
 
 func main() {
     l, err := logger.New(logger.Config{
-        Env:        "development",
+        Env:        "development", // colored console output
         Level:      "debug",
         Console:    true,
         File:       true,
@@ -248,7 +245,7 @@ func main() {
 
     l.Info("custom logger ready")
 
-    // Optionally replace the global default so logger.Info(...) also uses this config
+    // Replace the global default so logger.Info(...) uses this config too
     logger.SetDefault(l)
 }
 ```
@@ -260,13 +257,18 @@ func main() {
 The package re-exports common zap field helpers so you never need to import zap directly:
 
 ```go
+import (
+    "time"
+    logger "github.com/kingsouphasin/go-logger-package"
+)
+
 logger.Info("order placed",
     logger.String("order_id", "ORD-123"),
     logger.Int("items", 3),
     logger.Float64("total", 99.95),
     logger.Bool("paid", true),
-    logger.Duration("processing", time.Second),
-    logger.Any("metadata", map[string]string{"source": "web"}),
+    logger.Duration("processing", 320*time.Millisecond),
+    logger.Any("tags", []string{"promo", "express"}),
     logger.Err(err),
 )
 ```
@@ -276,21 +278,24 @@ logger.Info("order placed",
 Attach fixed fields that appear on every subsequent log from that logger:
 
 ```go
-userLog := logger.With(logger.String("user_id", "u-42"), logger.String("role", "admin"))
-userLog.Info("profile viewed")          // includes user_id and role
-userLog.Warn("suspicious login")        // includes user_id and role
+userLog := logger.With(
+    logger.String("user_id", "u-42"),
+    logger.String("role", "admin"),
+)
+userLog.Info("profile viewed")      // includes user_id and role
+userLog.Warn("suspicious login")    // includes user_id and role
 ```
 
 ### Named loggers
 
-Add a component name prefix to distinguish logs from different parts of your app:
+Add a component prefix to distinguish logs from different parts of your app:
 
 ```go
-dbLog := logger.Named("database")
-dbLog.Info("connected")                 // {"logger":"database","msg":"connected"}
+dbLog  := logger.Named("database")
+dbLog.Info("connected")             // {"logger":"database","msg":"connected"}
 
 payLog := logger.Named("payment")
-payLog.Info("charge initiated")         // {"logger":"payment","msg":"charge initiated"}
+payLog.Info("charge initiated")     // {"logger":"payment","msg":"charge initiated"}
 ```
 
 ### Dynamic log level
@@ -298,8 +303,8 @@ payLog.Info("charge initiated")         // {"logger":"payment","msg":"charge ini
 Change the minimum log level at runtime without restarting:
 
 ```go
-logger.SetLevel("debug")    // enable verbose logging
-logger.SetLevel("warn")     // suppress info and debug
+logger.SetLevel("debug")   // enable verbose logging
+logger.SetLevel("warn")    // suppress info and debug
 ```
 
 ---
@@ -309,12 +314,19 @@ logger.SetLevel("warn")     // suppress info and debug
 Store a logger in `context.Context` and retrieve it anywhere downstream — no need to pass a logger as a function parameter:
 
 ```go
-// Store a logger in context (the middleware does this for you in HTTP handlers)
+import (
+    "context"
+    logger "github.com/kingsouphasin/go-logger-package"
+)
+
+// Store (the middleware does this automatically for HTTP handlers)
 ctx := logger.WithContext(r.Context(), log)
 
-// Retrieve it anywhere — in service functions, repositories, etc.
-log := logger.FromContext(ctx)
-log.Info("processing payment")      // inherits all fields including request_id
+// Retrieve anywhere downstream
+func processPayment(ctx context.Context, amount float64) {
+    log := logger.FromContext(ctx)
+    log.Info("charging card", logger.Float64("amount", amount))
+}
 ```
 
 `FromContext` falls back to the global default logger if no logger is stored in the context.
@@ -323,19 +335,18 @@ log.Info("processing payment")      // inherits all fields including request_id
 
 ## Middleware
 
-### Using `Handle` — the recommended approach
+Every middleware package provides two things:
 
-Every middleware package exports a `Handle` wrapper that injects the logger as a function parameter. You write a handler that accepts a `logger.Logger` directly — no `FromContext` call needed:
+- **`Middleware()`** — registers the logger middleware on the router
+- **`Handle(fn)`** — wraps your handler and injects the logger as a parameter (no `FromContext` needed)
 
 | Framework | Handle signature |
 |-----------|-----------------|
 | net/http | `httplogger.Handle(func(http.ResponseWriter, *http.Request, logger.Logger))` |
-| Gin | `ginlogger.Handle(func(*gin.Context, logger.Logger))` |
-| Echo | `echologger.Handle(func(echo.Context, logger.Logger) error)` |
-| Fiber | `fiberlogger.Handle(func(*fiber.Ctx, logger.Logger) error)` |
-| Chi | `chilogger.Handle(func(http.ResponseWriter, *http.Request, logger.Logger))` |
-
-`Handle` requires the middleware to be registered first (`r.Use(ginlogger.Middleware())`). It only handles the logger extraction step.
+| Gin      | `ginlogger.Handle(func(*gin.Context, logger.Logger))` |
+| Echo     | `echologger.Handle(func(echo.Context, logger.Logger) error)` |
+| Fiber    | `fiberlogger.Handle(func(*fiber.Ctx, logger.Logger) error)` |
+| Chi      | `chilogger.Handle(func(http.ResponseWriter, *http.Request, logger.Logger))` |
 
 ### net/http
 
@@ -343,27 +354,20 @@ Every middleware package exports a `Handle` wrapper that injects the logger as a
 package main
 
 import (
+    "fmt"
     "net/http"
 
-    "github.com/kingsouphasin/go-logger-package"
+    logger "github.com/kingsouphasin/go-logger-package"
     httplogger "github.com/kingsouphasin/go-logger-package/middleware/http"
 )
 
 func main() {
     mux := http.NewServeMux()
 
-    // Recommended: Handle injects the logger automatically
-    mux.HandleFunc("/hello", httplogger.Handle(func(w http.ResponseWriter, r *http.Request, log logger.Logger) {
-        log.Info("handling request")
-        w.Write([]byte("OK"))
+    mux.HandleFunc("/users", httplogger.Handle(func(w http.ResponseWriter, r *http.Request, log logger.Logger) {
+        log.Info("listing users")
+        fmt.Fprintln(w, `{"users":[]}`)
     }))
-
-    // Alternative: retrieve from context manually
-    mux.HandleFunc("/hello2", func(w http.ResponseWriter, r *http.Request) {
-        log := logger.FromContext(r.Context())
-        log.Info("handling request")
-        w.Write([]byte("OK"))
-    })
 
     http.ListenAndServe(":8080", httplogger.Middleware()(mux))
 }
@@ -375,8 +379,10 @@ func main() {
 package main
 
 import (
+    "net/http"
+
     "github.com/gin-gonic/gin"
-    "github.com/kingsouphasin/go-logger-package"
+    logger "github.com/kingsouphasin/go-logger-package"
     ginlogger "github.com/kingsouphasin/go-logger-package/middleware/gin"
 )
 
@@ -384,18 +390,11 @@ func main() {
     r := gin.New()
     r.Use(ginlogger.Middleware())
 
-    // Recommended: Handle injects the logger automatically
     r.GET("/users/:id", ginlogger.Handle(func(c *gin.Context, log logger.Logger) {
-        log.Info("fetching user", logger.String("id", c.Param("id")))
-        c.JSON(200, gin.H{"id": c.Param("id")})
+        id := c.Param("id")
+        log.Info("fetching user", logger.String("id", id))
+        c.JSON(http.StatusOK, gin.H{"id": id})
     }))
-
-    // Alternative: retrieve from context manually
-    r.GET("/users2/:id", func(c *gin.Context) {
-        log := logger.FromContext(c.Request.Context())
-        log.Info("fetching user", logger.String("id", c.Param("id")))
-        c.JSON(200, gin.H{"id": c.Param("id")})
-    })
 
     r.Run(":8080")
 }
@@ -409,7 +408,7 @@ package main
 import (
     "net/http"
 
-    "github.com/kingsouphasin/go-logger-package"
+    logger "github.com/kingsouphasin/go-logger-package"
     echologger "github.com/kingsouphasin/go-logger-package/middleware/echo"
     "github.com/labstack/echo/v4"
 )
@@ -418,18 +417,11 @@ func main() {
     e := echo.New()
     e.Use(echologger.Middleware())
 
-    // Recommended: Handle injects the logger automatically
     e.GET("/users/:id", echologger.Handle(func(c echo.Context, log logger.Logger) error {
-        log.Info("fetching user", logger.String("id", c.Param("id")))
-        return c.JSON(http.StatusOK, map[string]string{"id": c.Param("id")})
+        id := c.Param("id")
+        log.Info("fetching user", logger.String("id", id))
+        return c.JSON(http.StatusOK, map[string]string{"id": id})
     }))
-
-    // Alternative: retrieve from context manually
-    e.GET("/users2/:id", func(c echo.Context) error {
-        log := logger.FromContext(c.Request().Context())
-        log.Info("fetching user", logger.String("id", c.Param("id")))
-        return c.JSON(http.StatusOK, map[string]string{"id": c.Param("id")})
-    })
 
     e.Start(":8080")
 }
@@ -437,14 +429,14 @@ func main() {
 
 ### Fiber
 
-Fiber uses [fasthttp](https://github.com/valyala/fasthttp) which is not compatible with standard `context.Context`. Use `Handle` or `FromFiberCtx` — do **not** use `logger.FromContext` in Fiber handlers:
+Fiber uses [fasthttp](https://github.com/valyala/fasthttp) which is not compatible with standard `context.Context`. Use `Handle` or `FromFiberCtx` — do **not** call `logger.FromContext` in Fiber handlers:
 
 ```go
 package main
 
 import (
     "github.com/gofiber/fiber/v2"
-    "github.com/kingsouphasin/go-logger-package"
+    logger "github.com/kingsouphasin/go-logger-package"
     fiberlogger "github.com/kingsouphasin/go-logger-package/middleware/fiber"
 )
 
@@ -452,18 +444,11 @@ func main() {
     app := fiber.New()
     app.Use(fiberlogger.Middleware())
 
-    // Recommended: Handle injects the logger automatically
     app.Get("/users/:id", fiberlogger.Handle(func(c *fiber.Ctx, log logger.Logger) error {
-        log.Info("fetching user", logger.String("id", c.Params("id")))
-        return c.JSON(fiber.Map{"id": c.Params("id")})
+        id := c.Params("id")
+        log.Info("fetching user", logger.String("id", id))
+        return c.JSON(fiber.Map{"id": id})
     }))
-
-    // Alternative: use FromFiberCtx manually (Fiber-specific, not FromContext)
-    app.Get("/users2/:id", func(c *fiber.Ctx) error {
-        log := fiberlogger.FromFiberCtx(c)
-        log.Info("fetching user", logger.String("id", c.Params("id")))
-        return c.JSON(fiber.Map{"id": c.Params("id")})
-    })
 
     app.Listen(":8080")
 }
@@ -475,10 +460,11 @@ func main() {
 package main
 
 import (
+    "fmt"
     "net/http"
 
     "github.com/go-chi/chi/v5"
-    "github.com/kingsouphasin/go-logger-package"
+    logger "github.com/kingsouphasin/go-logger-package"
     chilogger "github.com/kingsouphasin/go-logger-package/middleware/chi"
 )
 
@@ -486,20 +472,42 @@ func main() {
     r := chi.NewRouter()
     r.Use(chilogger.Middleware)
 
-    // Recommended: Handle injects the logger automatically
     r.Get("/users/{id}", chilogger.Handle(func(w http.ResponseWriter, r *http.Request, log logger.Logger) {
-        log.Info("fetching user", logger.String("id", chi.URLParam(r, "id")))
-        w.Write([]byte("OK"))
+        id := chi.URLParam(r, "id")
+        log.Info("fetching user", logger.String("id", id))
+        fmt.Fprintf(w, `{"id":"%s"}`, id)
     }))
 
-    // Alternative: retrieve from context manually
-    r.Get("/users2/{id}", func(w http.ResponseWriter, r *http.Request) {
-        log := logger.FromContext(r.Context())
-        log.Info("fetching user", logger.String("id", chi.URLParam(r, "id")))
-        w.Write([]byte("OK"))
-    })
-
     http.ListenAndServe(":8080", r)
+}
+```
+
+### Passing the logger into service layers
+
+When your handler calls service functions, pass `ctx` down — each function retrieves the same logger (with the same `request_id`) via `FromContext`:
+
+```go
+r.GET("/orders", ginlogger.Handle(func(c *gin.Context, log logger.Logger) {
+    log.Info("order request received")
+
+    if err := placeOrder(c.Request.Context(), "ORD-001"); err != nil {
+        log.Error("order failed", logger.Err(err))
+        c.JSON(500, gin.H{"error": "internal"})
+        return
+    }
+    c.JSON(201, gin.H{"status": "created"})
+}))
+
+func placeOrder(ctx context.Context, orderID string) error {
+    log := logger.FromContext(ctx)          // same request_id as the handler
+    log.Info("placing order", logger.String("order_id", orderID))
+    return chargeCard(ctx)
+}
+
+func chargeCard(ctx context.Context) error {
+    log := logger.FromContext(ctx)          // same request_id, three levels deep
+    log.Info("charging card")
+    return nil
 }
 ```
 
@@ -507,50 +515,12 @@ func main() {
 
 ## Tracing a Request End-to-End
 
-Every log line emitted via `logger.FromContext(ctx)` (or `Handle`) automatically carries `request_id`. Pass `ctx` down through all service layers and every log line will be linked to the same request.
-
-```go
-// Handler
-func orderHandler(w http.ResponseWriter, r *http.Request) {
-    log := logger.FromContext(r.Context())
-    log.Info("order request received")
-
-    if err := processOrder(r.Context(), "ORD-001"); err != nil {
-        log.Error("order failed", logger.Err(err))
-        http.Error(w, "error", 500)
-        return
-    }
-    w.WriteHeader(201)
-}
-
-// Service layer — receives ctx, inherits request_id automatically
-func processOrder(ctx context.Context, orderID string) error {
-    log := logger.FromContext(ctx)
-    log.Info("processing order", logger.String("order_id", orderID))
-
-    if err := chargeCard(ctx); err != nil {
-        log.Error("charge failed", logger.Err(err))
-        return err
-    }
-    log.Info("order complete", logger.String("order_id", orderID))
-    return nil
-}
-
-// Deep layer — still has request_id
-func chargeCard(ctx context.Context) error {
-    log := logger.FromContext(ctx)
-    log.Info("charging card")
-    return nil
-}
-```
-
-All log lines share the same `request_id` and can be filtered together in any log aggregator:
+All log lines from a single request share the same `request_id`, making it easy to filter in any log aggregator (Datadog, Loki, CloudWatch):
 
 ```json
 {"request_id":"f4a1b2c3","msg":"order request received"}
-{"request_id":"f4a1b2c3","msg":"processing order","order_id":"ORD-001"}
+{"request_id":"f4a1b2c3","msg":"placing order","order_id":"ORD-001"}
 {"request_id":"f4a1b2c3","msg":"charging card"}
-{"request_id":"f4a1b2c3","msg":"order complete","order_id":"ORD-001"}
 {"request_id":"f4a1b2c3","msg":"request completed","status":201,"latency":"8ms"}
 ```
 
@@ -560,21 +530,21 @@ All log lines share the same `request_id` and can be filtered together in any lo
 
 ### Development mode (`LOGGER_ENV=development`)
 
-Colored, human-readable output — ideal for local development:
+Colored, human-readable — ideal for local development:
 
 ```
-2024-01-15T10:30:00.000Z  INFO  server listening  {"addr": ":8080"}
-2024-01-15T10:30:01.000Z  INFO  order request received  {"request_id": "f4a1b2c3", "method": "POST", "path": "/order", "ip": "127.0.0.1"}
-2024-01-15T10:30:01.008Z  INFO  request completed  {"request_id": "f4a1b2c3", "status": 201, "latency": "8ms"}
+2026-06-15T10:30:00.000+0700  INFO  server listening  {"addr": ":8080"}
+2026-06-15T10:30:01.000+0700  INFO  order request received  {"request_id": "f4a1b2c3", "method": "POST", "path": "/orders", "ip": "127.0.0.1"}
+2026-06-15T10:30:01.008+0700  INFO  request completed  {"request_id": "f4a1b2c3", "status": 201, "latency": "8ms"}
 ```
 
 ### Production mode (`LOGGER_ENV=production`)
 
-JSON — one object per line, ready for Datadog, Loki, CloudWatch, etc.:
+JSON — one object per line, ready for Datadog, Loki, CloudWatch:
 
 ```json
-{"level":"info","ts":"2024-01-15T10:30:01.000Z","msg":"order request received","request_id":"f4a1b2c3","method":"POST","path":"/order","query":"","ip":"203.0.113.5","user_agent":"curl/8.1.2","content_type":"application/json","request_size":42}
-{"level":"info","ts":"2024-01-15T10:30:01.008Z","msg":"request completed","request_id":"f4a1b2c3","status":201,"response_size":38,"latency":"8ms"}
+{"level":"info","ts":"2026-06-15T10:30:01.000Z","msg":"order request received","request_id":"f4a1b2c3","method":"POST","path":"/orders","query":"","ip":"203.0.113.5","user_agent":"curl/8.1.2","content_type":"application/json","request_size":42}
+{"level":"info","ts":"2026-06-15T10:30:01.008Z","msg":"request completed","request_id":"f4a1b2c3","status":201,"response_size":24,"latency":"8ms"}
 ```
 
 ### File upload (`multipart/form-data`)
@@ -598,7 +568,7 @@ File metadata is logged — file content is never logged:
 
 ### Sensitive query parameter redaction
 
-Parameters such as `token`, `api_key`, `password`, `secret`, `code`, `authorization`, `access_token`, `key`, `state`, and `client_secret` are automatically masked:
+`token`, `api_key`, `password`, `secret`, `code`, `authorization`, `access_token`, `key`, `state`, and `client_secret` are automatically masked:
 
 ```
 Request URL:  /search?q=golang&api_key=my-secret&page=2
@@ -609,18 +579,18 @@ Logged query: api_key=%5Bredacted%5D&page=2&q=golang
 
 ## Config Reference
 
-| Environment Variable    | Type    | Default            | Description                              |
-|-------------------------|---------|--------------------|------------------------------------------|
-| `LOGGER_ENV`            | string  | `production`       | `development` or `production`            |
-| `LOGGER_LEVEL`          | string  | `info`             | `debug`, `info`, `warn`, `error`, `fatal`|
-| `LOGGER_CALLER`         | bool    | `false`            | Include `caller` field (file:line)       |
-| `LOGGER_CONSOLE`        | bool    | `true`             | Write to stdout                          |
-| `LOGGER_FILE`           | bool    | `true`             | Write to rotating file                   |
-| `LOGGER_FILE_PATH`      | string  | `./logs/app.log`   | Path to log file                         |
-| `LOGGER_MAX_SIZE_MB`    | int     | `100`              | Max file size before rotation (MB)       |
-| `LOGGER_MAX_BACKUPS`    | int     | `30`               | Max number of old log files to keep      |
-| `LOGGER_MAX_AGE_DAYS`   | int     | `30`               | Max age of old log files (days)          |
-| `LOGGER_COMPRESS`       | bool    | `false`            | Gzip-compress rotated files              |
+| Environment Variable    | Type    | Default            | Description                               |
+|-------------------------|---------|--------------------|-------------------------------------------|
+| `LOGGER_ENV`            | string  | `production`       | `development` or `production`             |
+| `LOGGER_LEVEL`          | string  | `info`             | `debug`, `info`, `warn`, `error`, `fatal` |
+| `LOGGER_CALLER`         | bool    | `false`            | Include `caller` field (file:line)        |
+| `LOGGER_CONSOLE`        | bool    | `true`             | Write to stdout                           |
+| `LOGGER_FILE`           | bool    | `true`             | Write to rotating file                    |
+| `LOGGER_FILE_PATH`      | string  | `./logs/app.log`   | Path to log file                          |
+| `LOGGER_MAX_SIZE_MB`    | int     | `100`              | Max file size before rotation (MB)        |
+| `LOGGER_MAX_BACKUPS`    | int     | `30`               | Max number of old log files to keep       |
+| `LOGGER_MAX_AGE_DAYS`   | int     | `30`               | Max age of old log files (days)           |
+| `LOGGER_COMPRESS`       | bool    | `false`            | Gzip-compress rotated files               |
 
 ---
 
@@ -628,17 +598,17 @@ Logged query: api_key=%5Bredacted%5D&page=2&q=golang
 
 Every middleware logs these fields automatically on each request:
 
-| Field           | Type     | Source                                             |
-|-----------------|----------|----------------------------------------------------|
-| `request_id`    | string   | `X-Request-ID` header, or generated UUID v4        |
-| `method`        | string   | HTTP method (`GET`, `POST`, …)                     |
-| `path`          | string   | Route pattern (e.g. `/users/:id`) where supported  |
-| `query`         | string   | Query string with sensitive values redacted        |
-| `ip`            | string   | Checks `X-Forwarded-For`, `X-Real-IP`, `RemoteAddr`|
-| `user_agent`    | string   | `User-Agent` request header                        |
-| `content_type`  | string   | `Content-Type` request header                      |
-| `request_size`  | int      | `Content-Length` in bytes (`-1` if unknown)        |
-| `status`        | int      | HTTP response status code                          |
-| `response_size` | int      | Actual bytes written in the response body          |
-| `latency`       | duration | Total time from request received to response sent  |
+| Field           | Type     | Source                                              |
+|-----------------|----------|-----------------------------------------------------|
+| `request_id`    | string   | `X-Request-ID` header, or generated UUID v4         |
+| `method`        | string   | HTTP method (`GET`, `POST`, …)                      |
+| `path`          | string   | Route pattern (e.g. `/users/:id`) where supported   |
+| `query`         | string   | Query string with sensitive values redacted         |
+| `ip`            | string   | Checks `X-Forwarded-For`, `X-Real-IP`, `RemoteAddr` |
+| `user_agent`    | string   | `User-Agent` request header                         |
+| `content_type`  | string   | `Content-Type` request header                       |
+| `request_size`  | int      | `Content-Length` in bytes (`-1` if unknown)         |
+| `status`        | int      | HTTP response status code                           |
+| `response_size` | int      | Actual bytes written in the response body           |
+| `latency`       | duration | Total time from request received to response sent   |
 | `uploaded_files`| array    | Only for `multipart/form-data` — `name`, `size`, `content_type` per file |
