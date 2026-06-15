@@ -46,3 +46,28 @@ func TestMiddlewareDefaultsTo200(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
+
+func TestMiddlewareGeneratesRequestID(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	rec := httptest.NewRecorder()
+	Middleware()(handler).ServeHTTP(rec, req)
+
+	assert.NotEmpty(t, rec.Header().Get("X-Request-ID"))
+}
+
+func TestMiddlewarePropagatesExistingRequestID(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set("X-Request-ID", "my-trace-id")
+	rec := httptest.NewRecorder()
+	Middleware()(handler).ServeHTTP(rec, req)
+
+	assert.Equal(t, "my-trace-id", rec.Header().Get("X-Request-ID"))
+}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/kingsouphasin/logger"
 	"go.uber.org/zap"
 )
@@ -17,7 +18,14 @@ func Middleware(next http.Handler) http.Handler {
 		start := time.Now()
 		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
+		requestID := r.Header.Get("X-Request-ID")
+		if requestID == "" {
+			requestID = uuid.New().String()
+		}
+		rw.Header().Set("X-Request-ID", requestID)
+
 		log := logger.With(
+			zap.String("request_id", requestID),
 			zap.String("method", r.Method),
 		)
 		ctx := logger.WithContext(r.Context(), log)

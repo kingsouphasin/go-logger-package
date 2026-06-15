@@ -39,3 +39,30 @@ func TestGinMiddlewareCaptures404(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
+
+func TestGinMiddlewareGeneratesRequestID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(Middleware())
+	r.GET("/test", func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.NotEmpty(t, rec.Header().Get("X-Request-ID"))
+}
+
+func TestGinMiddlewarePropagatesExistingRequestID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(Middleware())
+	r.GET("/test", func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set("X-Request-ID", "my-trace-id")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, "my-trace-id", rec.Header().Get("X-Request-ID"))
+}

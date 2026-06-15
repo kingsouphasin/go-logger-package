@@ -39,3 +39,32 @@ func TestChiMiddlewareCapturesStatus(t *testing.T) {
 
 	assert.Equal(t, http.StatusCreated, rec.Code)
 }
+
+func TestChiMiddlewareGeneratesRequestID(t *testing.T) {
+	r := chi.NewRouter()
+	r.Use(Middleware)
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.NotEmpty(t, rec.Header().Get("X-Request-ID"))
+}
+
+func TestChiMiddlewarePropagatesExistingRequestID(t *testing.T) {
+	r := chi.NewRouter()
+	r.Use(Middleware)
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set("X-Request-ID", "my-trace-id")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, "my-trace-id", rec.Header().Get("X-Request-ID"))
+}

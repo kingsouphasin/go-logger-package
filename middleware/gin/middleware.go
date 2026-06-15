@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/kingsouphasin/logger"
 	"go.uber.org/zap"
 )
@@ -11,11 +12,19 @@ import (
 func Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
+
+		requestID := c.GetHeader("X-Request-ID")
+		if requestID == "" {
+			requestID = uuid.New().String()
+		}
+		c.Header("X-Request-ID", requestID)
+
 		path := c.FullPath()
 		if path == "" {
 			path = c.Request.URL.Path
 		}
 		log := logger.With(
+			zap.String("request_id", requestID),
 			zap.String("method", c.Request.Method),
 			zap.String("path", path),
 		)

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/kingsouphasin/logger"
 	"go.uber.org/zap"
 )
@@ -13,7 +14,15 @@ const loggerKey = "logger"
 func Middleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		start := time.Now()
+
+		requestID := c.Get("X-Request-ID")
+		if requestID == "" {
+			requestID = uuid.New().String()
+		}
+		c.Set("X-Request-ID", requestID)
+
 		log := logger.With(
+			zap.String("request_id", requestID),
 			zap.String("method", c.Method()),
 			zap.String("path", c.Path()),
 		)

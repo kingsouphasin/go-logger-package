@@ -39,3 +39,32 @@ func TestEchoMiddlewareCaptures500(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }
+
+func TestEchoMiddlewareGeneratesRequestID(t *testing.T) {
+	e := echo.New()
+	e.Use(Middleware())
+	e.GET("/test", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.NotEmpty(t, rec.Header().Get("X-Request-ID"))
+}
+
+func TestEchoMiddlewarePropagatesExistingRequestID(t *testing.T) {
+	e := echo.New()
+	e.Use(Middleware())
+	e.GET("/test", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set("X-Request-ID", "my-trace-id")
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, "my-trace-id", rec.Header().Get("X-Request-ID"))
+}

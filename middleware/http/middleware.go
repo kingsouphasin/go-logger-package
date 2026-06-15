@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/kingsouphasin/logger"
 	"go.uber.org/zap"
 )
@@ -17,7 +18,14 @@ func Middleware() func(http.Handler) http.Handler {
 			start := time.Now()
 			rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
+			requestID := r.Header.Get("X-Request-ID")
+			if requestID == "" {
+				requestID = uuid.New().String()
+			}
+			rw.Header().Set("X-Request-ID", requestID)
+
 			log := logger.With(
+				zap.String("request_id", requestID),
 				zap.String("method", r.Method),
 				zap.String("path", r.URL.Path),
 			)

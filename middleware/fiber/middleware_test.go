@@ -48,3 +48,38 @@ func TestFiberMiddlewareFromFiberCtxFallsBackToDefault(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
+
+func TestFiberMiddlewareGeneratesRequestID(t *testing.T) {
+	app := fiber.New()
+	app.Use(Middleware())
+	app.Get("/test", func(c *fiber.Ctx) error {
+		return c.SendStatus(http.StatusOK)
+	})
+
+	req, err := http.NewRequest(http.MethodGet, "/test", nil)
+	require.NoError(t, err)
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	_, _ = io.ReadAll(resp.Body)
+
+	assert.NotEmpty(t, resp.Header.Get("X-Request-ID"))
+}
+
+func TestFiberMiddlewarePropagatesExistingRequestID(t *testing.T) {
+	app := fiber.New()
+	app.Use(Middleware())
+	app.Get("/test", func(c *fiber.Ctx) error {
+		return c.SendStatus(http.StatusOK)
+	})
+
+	req, err := http.NewRequest(http.MethodGet, "/test", nil)
+	require.NoError(t, err)
+	req.Header.Set("X-Request-ID", "my-trace-id")
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	_, _ = io.ReadAll(resp.Body)
+
+	assert.Equal(t, "my-trace-id", resp.Header.Get("X-Request-ID"))
+}
