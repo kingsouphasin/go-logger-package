@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /Users/mac/Desktop/Logger-package/middleware/http /Users/mac/Desktop/Logger-package/middleware/gin /Users/mac/Desktop/Logger-package/middleware/echo /Users/mac/Desktop/Logger-package/middleware/fiber /Users/mac/Desktop/Logger-package/middleware/chi)",
+      "Bash(go mod *)",
+      "Bash(go test *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(xargs -I{} sh -c 'echo \"=== {} ===\" && cat {}')"
+    ],
+    "additionalDirectories": [
+      "/Users/mac/Desktop/Logger-package/middleware"
+    ]
+  }
+}

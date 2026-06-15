@@ -2,6 +2,8 @@ go 1.25.0
 
 use (
 	.
+	./examples/hello-world
+	./examples/http-server
 	./middleware/chi
 	./middleware/echo
 	./middleware/fiber

@@ -8,16 +8,40 @@ import (
 )
 
 type Config struct {
-	Env        string
-	Level      string
-	Caller     bool
-	Console    bool
-	File       bool
-	FilePath   string
-	MaxSizeMB  int
+	// Env sets the output format. "development" prints colored human-readable
+	// logs; "production" prints JSON. Default: "production".
+	Env string
+
+	// Level is the minimum log level to emit: "debug", "info", "warn", "error",
+	// or "fatal". Messages below this level are silently dropped. Default: "info".
+	Level string
+
+	// Caller adds a "caller" field (file:line) to every log entry. Default: false.
+	Caller bool
+
+	// Console enables writing log output to stdout. Default: true.
+	Console bool
+
+	// File enables writing log output to a rotating file. Default: true.
+	File bool
+
+	// FilePath is the path of the log file. Default: "./logs/app.log".
+	FilePath string
+
+	// MaxSizeMB is the maximum size in megabytes a log file can reach before it
+	// is rotated. Default: 100.
+	MaxSizeMB int
+
+	// MaxBackups is the maximum number of old rotated log files to keep.
+	// Older files are deleted once this limit is exceeded. Default: 30.
 	MaxBackups int
+
+	// MaxAgeDays is the maximum number of days to retain old log files.
+	// Files older than this are deleted during the next rotation. Default: 30.
 	MaxAgeDays int
-	Compress   bool
+
+	// Compress gzip-compresses rotated log files to save disk space. Default: false.
+	Compress bool
 }
 
 func defaultConfig() Config {
