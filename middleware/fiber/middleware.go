@@ -13,6 +13,14 @@ import (
 
 const loggerKey = "logger"
 
+// Handle wraps a handler function that accepts a logger, so callers do not need
+// to call FromFiberCtx themselves. The middleware must be registered first.
+func Handle(fn func(*fiber.Ctx, logger.Logger) error) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		return fn(c, FromFiberCtx(c))
+	}
+}
+
 func Middleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		start := time.Now()

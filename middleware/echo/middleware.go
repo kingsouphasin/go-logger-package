@@ -11,6 +11,14 @@ import (
 	"go.uber.org/zap"
 )
 
+// Handle wraps a handler function that accepts a logger, so callers do not need
+// to call logger.FromContext themselves. The middleware must be registered first.
+func Handle(fn func(echo.Context, logger.Logger) error) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		return fn(c, logger.FromContext(c.Request().Context()))
+	}
+}
+
 func Middleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
