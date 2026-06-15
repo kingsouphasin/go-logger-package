@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -30,7 +31,7 @@ func Middleware() func(http.Handler) http.Handler {
 				zap.String("request_id", requestID),
 				zap.String("method", r.Method),
 				zap.String("path", r.URL.Path),
-				zap.String("query", r.URL.RawQuery),
+				zap.String("query", sanitizeQuery(r.URL.RawQuery)),
 				zap.String("ip", clientIP(r)),
 				zap.String("user_agent", r.UserAgent()),
 				zap.String("content_type", contentType),
@@ -100,6 +101,28 @@ func clientIP(r *http.Request) string {
 	}
 	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
 	return ip
+}
+
+var sensitiveQueryKeys = map[string]struct{}{
+	"token": {}, "access_token": {}, "api_key": {}, "key": {},
+	"password": {}, "code": {}, "state": {}, "authorization": {},
+	"secret": {}, "client_secret": {},
+}
+
+func sanitizeQuery(rawQuery string) string {
+	if rawQuery == "" {
+		return ""
+	}
+	q, err := url.ParseQuery(rawQuery)
+	if err != nil {
+		return "[unparseable]"
+	}
+	for k := range q {
+		if _, sensitive := sensitiveQueryKeys[strings.ToLower(k)]; sensitive {
+			q[k] = []string{"[redacted]"}
+		}
+	}
+	return q.Encode()
 }
 
 func fileUploads(r *http.Request) []uploadedFile {

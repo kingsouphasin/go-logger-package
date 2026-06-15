@@ -1,6 +1,7 @@
 package fiberlogger
 
 import (
+	"net/url"
 	"strings"
 	"time"
 
@@ -27,7 +28,7 @@ func Middleware() fiber.Handler {
 			zap.String("request_id", requestID),
 			zap.String("method", c.Method()),
 			zap.String("path", c.Path()),
-			zap.String("query", string(c.Request().URI().QueryString())),
+			zap.String("query", sanitizeQuery(string(c.Request().URI().QueryString()))),
 			zap.String("ip", c.IP()),
 			zap.String("user_agent", c.Get("User-Agent")),
 			zap.String("content_type", contentType),
@@ -50,6 +51,28 @@ func Middleware() fiber.Handler {
 		)
 		return err
 	}
+}
+
+var sensitiveQueryKeys = map[string]struct{}{
+	"token": {}, "access_token": {}, "api_key": {}, "key": {},
+	"password": {}, "code": {}, "state": {}, "authorization": {},
+	"secret": {}, "client_secret": {},
+}
+
+func sanitizeQuery(rawQuery string) string {
+	if rawQuery == "" {
+		return ""
+	}
+	q, err := url.ParseQuery(rawQuery)
+	if err != nil {
+		return "[unparseable]"
+	}
+	for k := range q {
+		if _, sensitive := sensitiveQueryKeys[strings.ToLower(k)]; sensitive {
+			q[k] = []string{"[redacted]"}
+		}
+	}
+	return q.Encode()
 }
 
 type uploadedFile struct {

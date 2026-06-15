@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -29,7 +30,7 @@ func Middleware(next http.Handler) http.Handler {
 		log := logger.With(
 			zap.String("request_id", requestID),
 			zap.String("method", r.Method),
-			zap.String("query", r.URL.RawQuery),
+			zap.String("query", sanitizeQuery(r.URL.RawQuery)),
 			zap.String("ip", clientIP(r)),
 			zap.String("user_agent", r.UserAgent()),
 			zap.String("content_type", contentType),
@@ -87,6 +88,28 @@ func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 		return h.Hijack()
 	}
 	return nil, nil, fmt.Errorf("responseWriter does not implement http.Hijacker")
+}
+
+var sensitiveQueryKeys = map[string]struct{}{
+	"token": {}, "access_token": {}, "api_key": {}, "key": {},
+	"password": {}, "code": {}, "state": {}, "authorization": {},
+	"secret": {}, "client_secret": {},
+}
+
+func sanitizeQuery(rawQuery string) string {
+	if rawQuery == "" {
+		return ""
+	}
+	q, err := url.ParseQuery(rawQuery)
+	if err != nil {
+		return "[unparseable]"
+	}
+	for k := range q {
+		if _, sensitive := sensitiveQueryKeys[strings.ToLower(k)]; sensitive {
+			q[k] = []string{"[redacted]"}
+		}
+	}
+	return q.Encode()
 }
 
 type uploadedFile struct {
