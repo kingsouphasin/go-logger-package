@@ -1,4 +1,4 @@
-module github.com/kingsouphasin/logger
+module github.com/kingsouphasin/go-logger-package
 
 go 1.25.0
 
