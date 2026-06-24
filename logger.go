@@ -67,17 +67,46 @@ func defaultLogger() Logger {
 // SetDefault replaces the global default logger. Useful in tests and for custom bootstrap.
 func SetDefault(l Logger) { globalLogger.Store(l) }
 
-func Debug(msg string, fields ...zap.Field)  { defaultLogger().Debug(msg, fields...) }
-func Info(msg string, fields ...zap.Field)   { defaultLogger().Info(msg, fields...) }
-func Warn(msg string, fields ...zap.Field)   { defaultLogger().Warn(msg, fields...) }
-func Error(msg string, fields ...zap.Field)  { defaultLogger().Error(msg, fields...) }
-func Fatal(msg string, fields ...zap.Field)  { defaultLogger().Fatal(msg, fields...) }
-func Fatalw(msg string, kv ...any)           { defaultLogger().Fatalw(msg, kv...) }
-func Debugw(msg string, kv ...any)           { defaultLogger().Debugw(msg, kv...) }
-func Infow(msg string, kv ...any)            { defaultLogger().Infow(msg, kv...) }
-func Warnw(msg string, kv ...any)            { defaultLogger().Warnw(msg, kv...) }
-func Errorw(msg string, kv ...any)           { defaultLogger().Errorw(msg, kv...) }
-func With(fields ...zap.Field) Logger        { return defaultLogger().With(fields...) }
-func Named(name string) Logger               { return defaultLogger().Named(name) }
-func SetLevel(level string) error            { return defaultLogger().SetLevel(level) }
-func Sync() error                            { return defaultLogger().Sync() }
+// pkgLog returns the underlying *zap.Logger pre-configured to skip the two
+// extra frames introduced by the package-level wrapper → zapLogger.method chain.
+func pkgLog() *zap.Logger {
+	if l, ok := defaultLogger().(*zapLogger); ok {
+		return l.pkgZap()
+	}
+	return nil
+}
+
+func Debug(msg string, fields ...zap.Field) {
+	if z := pkgLog(); z != nil {
+		z.Debug(msg, fields...)
+	}
+}
+func Info(msg string, fields ...zap.Field) {
+	if z := pkgLog(); z != nil {
+		z.Info(msg, fields...)
+	}
+}
+func Warn(msg string, fields ...zap.Field) {
+	if z := pkgLog(); z != nil {
+		z.Warn(msg, fields...)
+	}
+}
+func Error(msg string, fields ...zap.Field) {
+	if z := pkgLog(); z != nil {
+		z.Error(msg, fields...)
+	}
+}
+func Fatal(msg string, fields ...zap.Field) {
+	if z := pkgLog(); z != nil {
+		z.Fatal(msg, fields...)
+	}
+}
+func Debugw(msg string, kv ...any) { defaultLogger().Debugw(msg, kv...) }
+func Infow(msg string, kv ...any)  { defaultLogger().Infow(msg, kv...) }
+func Warnw(msg string, kv ...any)  { defaultLogger().Warnw(msg, kv...) }
+func Errorw(msg string, kv ...any) { defaultLogger().Errorw(msg, kv...) }
+func Fatalw(msg string, kv ...any) { defaultLogger().Fatalw(msg, kv...) }
+func With(fields ...zap.Field) Logger { return defaultLogger().With(fields...) }
+func Named(name string) Logger        { return defaultLogger().Named(name) }
+func SetLevel(level string) error     { return defaultLogger().SetLevel(level) }
+func Sync() error                     { return defaultLogger().Sync() }

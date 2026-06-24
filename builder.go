@@ -11,7 +11,8 @@ import (
 )
 
 type zapLogger struct {
-	z      *zap.Logger
+	z      *zap.Logger       // skip 1 — for Logger interface method calls
+	zPkg   *zap.Logger       // skip 2 — for package-level global function calls
 	sugar  *zap.SugaredLogger
 	level  zap.AtomicLevel
 	cancel context.CancelFunc
@@ -45,11 +46,13 @@ func New(cfg Config) (Logger, error) {
 		startTimeRotation(ctx, lj)
 	}
 
-	opts := []zap.Option{zap.WithCaller(cfg.Caller)}
-	z := zap.New(zapcore.NewTee(cores...), opts...)
+	base := zap.New(zapcore.NewTee(cores...), zap.WithCaller(cfg.Caller))
+	z    := base.WithOptions(zap.AddCallerSkip(1))
+	zPkg := base.WithOptions(zap.AddCallerSkip(2))
 
 	return &zapLogger{
 		z:      z,
+		zPkg:   zPkg,
 		sugar:  z.Sugar(),
 		level:  level,
 		cancel: cancel,
@@ -69,14 +72,19 @@ func (l *zapLogger) Errorw(msg string, kv ...any) { l.sugar.Errorw(msg, kv...) }
 func (l *zapLogger) Fatalw(msg string, kv ...any) { l.sugar.Fatalw(msg, kv...) }
 
 func (l *zapLogger) With(fields ...zap.Field) Logger {
-	z := l.z.With(fields...)
-	return &zapLogger{z: z, sugar: z.Sugar(), level: l.level, cancel: l.cancel}
+	z    := l.z.With(fields...)
+	zPkg := l.zPkg.With(fields...)
+	return &zapLogger{z: z, zPkg: zPkg, sugar: z.Sugar(), level: l.level, cancel: l.cancel}
 }
 
 func (l *zapLogger) Named(name string) Logger {
-	z := l.z.Named(name)
-	return &zapLogger{z: z, sugar: z.Sugar(), level: l.level, cancel: l.cancel}
+	z    := l.z.Named(name)
+	zPkg := l.zPkg.Named(name)
+	return &zapLogger{z: z, zPkg: zPkg, sugar: z.Sugar(), level: l.level, cancel: l.cancel}
 }
+
+// pkgZap returns the zap logger configured for package-level global function calls (skip 2).
+func (l *zapLogger) pkgZap() *zap.Logger { return l.zPkg }
 
 func (l *zapLogger) SetLevel(level string) error {
 	var lvl zapcore.Level
