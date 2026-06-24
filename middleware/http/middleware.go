@@ -53,9 +53,10 @@ func Middleware() func(http.Handler) http.Handler {
 			}
 
 			ctx := logger.WithContext(r.Context(), log)
+			log.Info("request")
 			next.ServeHTTP(rw, r.WithContext(ctx))
 
-			log.Info("request completed",
+			log.Info("response",
 				zap.Int("status", rw.statusCode),
 				zap.Int("response_size", rw.size),
 				zap.String("latency", time.Since(start).String()),

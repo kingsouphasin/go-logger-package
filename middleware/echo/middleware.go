@@ -34,7 +34,7 @@ func Middleware() echo.MiddlewareFunc {
 			log := logger.With(
 				zap.String("request_id", requestID),
 				zap.String("method", c.Request().Method),
-				zap.String("path", c.Path()),
+				zap.String("path", c.Request().URL.Path),
 				zap.String("query", sanitizeQuery(c.Request().URL.RawQuery)),
 				zap.String("ip", c.RealIP()),
 				zap.String("user_agent", c.Request().UserAgent()),
@@ -51,6 +51,7 @@ func Middleware() echo.MiddlewareFunc {
 			ctx := logger.WithContext(c.Request().Context(), log)
 			c.SetRequest(c.Request().WithContext(ctx))
 
+			log.Info("request")
 			err := next(c)
 
 			status := c.Response().Status
@@ -58,7 +59,8 @@ func Middleware() echo.MiddlewareFunc {
 				status = he.Code
 			}
 
-			log.Info("request completed",
+			log.Info("response",
+				zap.String("route", c.Path()),
 				zap.Int("status", status),
 				zap.Int64("response_size", c.Response().Size),
 				zap.String("latency", time.Since(start).String()),

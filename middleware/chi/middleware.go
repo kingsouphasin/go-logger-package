@@ -38,6 +38,7 @@ func Middleware(next http.Handler) http.Handler {
 		log := logger.With(
 			zap.String("request_id", requestID),
 			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path),
 			zap.String("query", sanitizeQuery(r.URL.RawQuery)),
 			zap.String("ip", clientIP(r)),
 			zap.String("user_agent", r.UserAgent()),
@@ -52,15 +53,16 @@ func Middleware(next http.Handler) http.Handler {
 		}
 
 		ctx := logger.WithContext(r.Context(), log)
+		log.Info("request")
 		next.ServeHTTP(rw, r.WithContext(ctx))
 
-		path := r.URL.Path
+		route := r.URL.Path
 		if rctx := chi.RouteContext(r.Context()); rctx != nil && rctx.RoutePattern() != "" {
-			path = rctx.RoutePattern()
+			route = rctx.RoutePattern()
 		}
 
-		log.Info("request completed",
-			zap.String("path", path),
+		log.Info("response",
+			zap.String("route", route),
 			zap.Int("status", rw.statusCode),
 			zap.Int("response_size", rw.size),
 			zap.String("latency", time.Since(start).String()),

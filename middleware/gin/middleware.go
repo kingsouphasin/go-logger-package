@@ -30,15 +30,11 @@ func Middleware() gin.HandlerFunc {
 		c.Header("X-Request-ID", requestID)
 
 		contentType := c.ContentType()
-		path := c.FullPath()
-		if path == "" {
-			path = c.Request.URL.Path
-		}
 
 		log := logger.With(
 			zap.String("request_id", requestID),
 			zap.String("method", c.Request.Method),
-			zap.String("path", path),
+			zap.String("path", c.Request.URL.Path),
 			zap.String("query", sanitizeQuery(c.Request.URL.RawQuery)),
 			zap.String("ip", c.ClientIP()),
 			zap.String("user_agent", c.Request.UserAgent()),
@@ -55,9 +51,11 @@ func Middleware() gin.HandlerFunc {
 		ctx := logger.WithContext(c.Request.Context(), log)
 		c.Request = c.Request.WithContext(ctx)
 
+		log.Info("request")
 		c.Next()
 
-		log.Info("request completed",
+		log.Info("response",
+			zap.String("route", c.FullPath()),
 			zap.Int("status", c.Writer.Status()),
 			zap.Int("response_size", c.Writer.Size()),
 			zap.String("latency", time.Since(start).String()),
