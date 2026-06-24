@@ -51,10 +51,11 @@ func Middleware() gin.HandlerFunc {
 		ctx := logger.WithContext(c.Request.Context(), log)
 		c.Request = c.Request.WithContext(ctx)
 
-		log.Info("request")
+		mw := log.WithoutCaller()
+		mw.Info("HTTP Request")
 		c.Next()
 
-		log.Info("response",
+		mw.Info("HTTP Response",
 			zap.String("route", c.FullPath()),
 			zap.Int("status", c.Writer.Status()),
 			zap.Int("response_size", c.Writer.Size()),

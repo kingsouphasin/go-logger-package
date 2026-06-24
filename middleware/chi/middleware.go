@@ -53,7 +53,8 @@ func Middleware(next http.Handler) http.Handler {
 		}
 
 		ctx := logger.WithContext(r.Context(), log)
-		log.Info("request")
+		mw := log.WithoutCaller()
+		mw.Info("HTTP Request")
 		next.ServeHTTP(rw, r.WithContext(ctx))
 
 		route := r.URL.Path
@@ -61,7 +62,7 @@ func Middleware(next http.Handler) http.Handler {
 			route = rctx.RoutePattern()
 		}
 
-		log.Info("response",
+		mw.Info("HTTP Response",
 			zap.String("route", route),
 			zap.Int("status", rw.statusCode),
 			zap.Int("response_size", rw.size),

@@ -25,6 +25,10 @@ type Logger interface {
 
 	With(fields ...zap.Field) Logger
 	Named(name string) Logger
+	// WithoutCaller returns a copy of the logger with the caller field suppressed.
+	// Use this for infrastructure logs (e.g. middleware) where the call site is
+	// always inside the library and not meaningful to the application developer.
+	WithoutCaller() Logger
 	SetLevel(level string) error
 	Sync() error
 }
@@ -55,7 +59,7 @@ func init() {
 	if err != nil || l == nil {
 		// Last resort: bare stderr logger so the package never has a nil defaultLogger
 		z, _ := zap.NewProduction()
-		l = &zapLogger{z: z, sugar: z.Sugar(), level: zap.NewAtomicLevelAt(zapcore.InfoLevel)}
+		l = &zapLogger{z: z, zPkg: z, sugar: z.Sugar(), level: zap.NewAtomicLevelAt(zapcore.InfoLevel)}
 	}
 	globalLogger.Store(l)
 }

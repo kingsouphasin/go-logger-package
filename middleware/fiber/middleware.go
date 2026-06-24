@@ -50,10 +50,11 @@ func Middleware() fiber.Handler {
 		}
 
 		c.Locals(loggerKey, log)
-		log.Info("request")
+		mw := log.WithoutCaller()
+		mw.Info("HTTP Request")
 		err := c.Next()
 
-		log.Info("response",
+		mw.Info("HTTP Response",
 			zap.Int("status", c.Response().StatusCode()),
 			zap.Int("response_size", len(c.Response().Body())),
 			zap.String("latency", time.Since(start).String()),

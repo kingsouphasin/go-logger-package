@@ -51,7 +51,8 @@ func Middleware() echo.MiddlewareFunc {
 			ctx := logger.WithContext(c.Request().Context(), log)
 			c.SetRequest(c.Request().WithContext(ctx))
 
-			log.Info("request")
+			mw := log.WithoutCaller()
+			mw.Info("HTTP Request")
 			err := next(c)
 
 			status := c.Response().Status
@@ -59,7 +60,7 @@ func Middleware() echo.MiddlewareFunc {
 				status = he.Code
 			}
 
-			log.Info("response",
+			mw.Info("HTTP Response",
 				zap.String("route", c.Path()),
 				zap.Int("status", status),
 				zap.Int64("response_size", c.Response().Size),

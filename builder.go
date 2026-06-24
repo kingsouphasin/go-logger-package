@@ -86,6 +86,12 @@ func (l *zapLogger) Named(name string) Logger {
 // pkgZap returns the zap logger configured for package-level global function calls (skip 2).
 func (l *zapLogger) pkgZap() *zap.Logger { return l.zPkg }
 
+func (l *zapLogger) WithoutCaller() Logger {
+	z    := l.z.WithOptions(zap.WithCaller(false))
+	zPkg := l.zPkg.WithOptions(zap.WithCaller(false))
+	return &zapLogger{z: z, zPkg: zPkg, sugar: z.Sugar(), level: l.level, cancel: l.cancel}
+}
+
 func (l *zapLogger) SetLevel(level string) error {
 	var lvl zapcore.Level
 	if err := lvl.UnmarshalText([]byte(level)); err != nil {
