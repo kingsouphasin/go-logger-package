@@ -40,7 +40,7 @@ type Config struct {
 	// Files older than this are deleted during the next rotation. Default: 30.
 	MaxAgeDays int
 
-	// Compress gzip-compresses rotated log files to save disk space. Default: false.
+	// Compress gzip-compresses rotated log files to save disk space. Default: true.
 	Compress bool
 }
 
@@ -55,7 +55,7 @@ func defaultConfig() Config {
 		MaxSizeMB:  100,
 		MaxBackups: 30,
 		MaxAgeDays: 30,
-		Compress:   false,
+		Compress:   true,
 	}
 }
 

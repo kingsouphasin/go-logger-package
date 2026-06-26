@@ -68,7 +68,7 @@ func defaultLogger() Logger {
 	return globalLogger.Load().(Logger)
 }
 
-// SetDefault replaces the global default logger. Useful in tests and for custom bootstrap.
+// SetDefault replaces the global default logger.
 func SetDefault(l Logger) { globalLogger.Store(l) }
 
 // pkgLog returns the underlying *zap.Logger pre-configured to skip the two

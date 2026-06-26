@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/kingsouphasin/go-logger-package"
@@ -102,6 +105,50 @@ func main() {
 	custom.Info("custom logger is ready", logger.String("env", "development"))
 
 	logger.Info("=== example complete ===")
+
+	// ─── 9. Rotation demo ────────────────────────────────────────────────────
+	// Demonstrates that app.log rotates to a .gz backup and a fresh app.log is
+	// created when the size limit is hit. Uses 1MB here; production uses 100MB.
+	os.RemoveAll("./logs/demo") // clean slate each run
+
+	rotLog, err := logger.New(logger.Config{
+		Console:    false,
+		File:       true,
+		FilePath:   "./logs/demo/app.log", // same filename as production
+		MaxSizeMB:  1,
+		MaxBackups: 5,
+		MaxAgeDays: 0,
+		Compress:   true,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "rotation demo: %v\n", err)
+		return
+	}
+	defer rotLog.Sync()
+
+	payload := strings.Repeat("x", 200) // ~200 bytes per entry → ~5000 entries per 1MB
+	fmt.Println("Writing logs until rotation triggers (>1MB)...")
+	for i := 0; i < 6000; i++ {
+		rotLog.Info("rotation demo entry", logger.Int("i", i), logger.String("data", payload))
+	}
+
+	fmt.Println("\nlogs/demo/ after writing:")
+	fmt.Println("  (old app.log renamed to timestamped .gz, new app.log created)")
+	entries, _ := os.ReadDir("./logs/demo")
+	for _, e := range entries {
+		info, err := e.Info()
+		if err != nil {
+			fmt.Printf("  %-55s  (compressing...)\n", e.Name())
+			continue
+		}
+		label := ""
+		if e.Name() == "app.log" {
+			label = "  ← current (fresh, still receiving writes)"
+		} else {
+			label = "  ← rotated + compressed backup"
+		}
+		fmt.Printf("  %-52s %8d bytes%s\n", e.Name(), info.Size(), label)
+	}
 }
 
 // processOrder simulates a service function that uses the context logger.

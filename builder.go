@@ -1,7 +1,6 @@
 package logger
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,11 +10,10 @@ import (
 )
 
 type zapLogger struct {
-	z      *zap.Logger // skip 1 — for Logger interface method calls
-	zPkg   *zap.Logger // skip 2 — for package-level global function calls
-	sugar  *zap.SugaredLogger
-	level  zap.AtomicLevel
-	cancel context.CancelFunc
+	z     *zap.Logger // skip 1 — for Logger interface method calls
+	zPkg  *zap.Logger // skip 2 — for package-level global function calls
+	sugar *zap.SugaredLogger
+	level zap.AtomicLevel
 }
 
 func New(cfg Config) (Logger, error) {
@@ -33,17 +31,12 @@ func New(cfg Config) (Logger, error) {
 		cores = append(cores, zapcore.NewCore(enc, zapcore.AddSync(os.Stdout), level))
 	}
 
-	var cancel context.CancelFunc
 	if cfg.File {
 		if err := os.MkdirAll(filepath.Dir(cfg.FilePath), 0755); err != nil {
 			return nil, fmt.Errorf("logger: create log directory: %w", err)
 		}
 		lj := newRotatingWriter(cfg)
 		cores = append(cores, zapcore.NewCore(enc, zapcore.AddSync(lj), level))
-
-		ctx, c := context.WithCancel(context.Background())
-		cancel = c
-		startTimeRotation(ctx, lj)
 	}
 
 	base := zap.New(zapcore.NewTee(cores...), zap.WithCaller(cfg.Caller))
@@ -51,11 +44,10 @@ func New(cfg Config) (Logger, error) {
 	zPkg := base.WithOptions(zap.AddCallerSkip(2))
 
 	return &zapLogger{
-		z:      z,
-		zPkg:   zPkg,
-		sugar:  z.Sugar(),
-		level:  level,
-		cancel: cancel,
+		z:     z,
+		zPkg:  zPkg,
+		sugar: z.Sugar(),
+		level: level,
 	}, nil
 }
 
@@ -74,13 +66,13 @@ func (l *zapLogger) Fatalw(msg string, kv ...any) { l.sugar.Fatalw(msg, kv...) }
 func (l *zapLogger) With(fields ...zap.Field) Logger {
 	z := l.z.With(fields...)
 	zPkg := l.zPkg.With(fields...)
-	return &zapLogger{z: z, zPkg: zPkg, sugar: z.Sugar(), level: l.level, cancel: l.cancel}
+	return &zapLogger{z: z, zPkg: zPkg, sugar: z.Sugar(), level: l.level}
 }
 
 func (l *zapLogger) Named(name string) Logger {
 	z := l.z.Named(name)
 	zPkg := l.zPkg.Named(name)
-	return &zapLogger{z: z, zPkg: zPkg, sugar: z.Sugar(), level: l.level, cancel: l.cancel}
+	return &zapLogger{z: z, zPkg: zPkg, sugar: z.Sugar(), level: l.level}
 }
 
 // pkgZap returns the zap logger configured for package-level global function calls (skip 2).
@@ -89,7 +81,7 @@ func (l *zapLogger) pkgZap() *zap.Logger { return l.zPkg }
 func (l *zapLogger) WithoutCaller() Logger {
 	z := l.z.WithOptions(zap.WithCaller(false))
 	zPkg := l.zPkg.WithOptions(zap.WithCaller(false))
-	return &zapLogger{z: z, zPkg: zPkg, sugar: z.Sugar(), level: l.level, cancel: l.cancel}
+	return &zapLogger{z: z, zPkg: zPkg, sugar: z.Sugar(), level: l.level}
 }
 
 func (l *zapLogger) SetLevel(level string) error {
@@ -102,9 +94,6 @@ func (l *zapLogger) SetLevel(level string) error {
 }
 
 func (l *zapLogger) Sync() error {
-	if l.cancel != nil {
-		l.cancel()
-	}
 	return l.z.Sync()
 }
 
