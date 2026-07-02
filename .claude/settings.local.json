@@ -6,7 +6,11 @@
       "Bash(go test *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(xargs -I{} sh -c 'echo \"=== {} ===\" && cat {}')"
+      "Bash(xargs -I{} sh -c 'echo \"=== {} ===\" && cat {}')",
+      "Bash(cat \"/Users/mac/Desktop/LBB/lbb-customer/AMG-Service/Makefile\")",
+      "Read(//Users/mac/Desktop/LBB/lbb-customer/AMG-Service/**)",
+      "Bash(ps aux *)",
+      "Read(//Users/mac/Desktop/LBB/lbb-customer/AMG-Service/logs/**)"
     ],
     "additionalDirectories": [
       "/Users/mac/Desktop/Logger-package/middleware"

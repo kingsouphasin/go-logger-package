@@ -24,7 +24,7 @@ func TestDefaultConfig(t *testing.T) {
 	assert.Equal(t, 100, cfg.MaxSizeMB)
 	assert.Equal(t, 30, cfg.MaxBackups)
 	assert.Equal(t, 30, cfg.MaxAgeDays)
-	assert.False(t, cfg.Compress)
+	assert.True(t, cfg.Compress)
 }
 
 func TestConfigFromEnv(t *testing.T) {
