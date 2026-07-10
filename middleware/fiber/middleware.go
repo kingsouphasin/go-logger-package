@@ -43,22 +43,43 @@ func Middleware() fiber.Handler {
 			zap.Int("request_size", c.Request().Header.ContentLength()),
 		)
 
+		bodyEnabled, bodyMax := logger.BodyConfig()
+
+		var reqBody string
 		if strings.Contains(contentType, "multipart/form-data") {
 			if files := fileUploads(c); len(files) > 0 {
 				log = log.With(zap.Any("uploaded_files", files))
 			}
+		} else if bodyEnabled && isBodyLoggable(contentType) {
+			// fasthttp already buffers the body; c.Body() needs no restoring.
+			reqBody = captureBody(c.Body(), bodyMax, contentType)
 		}
 
 		c.Locals(loggerKey, log)
 		mw := log.WithoutCaller()
-		mw.Info("HTTP Request")
+
+		if reqBody != "" {
+			mw.Info("HTTP Request", zap.String("request_body", reqBody))
+		} else {
+			mw.Info("HTTP Request")
+		}
+
 		err := c.Next()
 
-		mw.Info("HTTP Response",
+		respFields := []zap.Field{
 			zap.Int("status", c.Response().StatusCode()),
 			zap.Int("response_size", len(c.Response().Body())),
 			zap.String("latency", time.Since(start).String()),
-		)
+		}
+		if bodyEnabled {
+			respCT := string(c.Response().Header.ContentType())
+			if isBodyLoggable(respCT) {
+				if b := captureBody(c.Response().Body(), bodyMax, respCT); b != "" {
+					respFields = append(respFields, zap.String("response_body", b))
+				}
+			}
+		}
+		mw.Info("HTTP Response", respFields...)
 		return err
 	}
 }

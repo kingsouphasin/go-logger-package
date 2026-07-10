@@ -2,7 +2,9 @@ package httplogger
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -34,6 +36,11 @@ func Middleware() func(http.Handler) http.Handler {
 			}
 			rw.Header().Set("X-Request-ID", requestID)
 
+			bodyEnabled, bodyMax := logger.BodyConfig()
+			if bodyEnabled {
+				rw.bodyLimit = bodyMax
+			}
+
 			contentType := r.Header.Get("Content-Type")
 			log := logger.With(
 				zap.String("request_id", requestID),
@@ -46,22 +53,40 @@ func Middleware() func(http.Handler) http.Handler {
 				zap.Int64("request_size", r.ContentLength),
 			)
 
+			var reqBody string
 			if strings.Contains(contentType, "multipart/form-data") {
 				if files := fileUploads(r); len(files) > 0 {
 					log = log.With(zap.Any("uploaded_files", files))
+				}
+			} else if bodyEnabled && isBodyLoggable(contentType) {
+				if raw, err := io.ReadAll(r.Body); err == nil {
+					r.Body = io.NopCloser(bytes.NewReader(raw)) // restore for the handler
+					reqBody = captureBody(raw, bodyMax, contentType)
 				}
 			}
 
 			ctx := logger.WithContext(r.Context(), log)
 			mw := log.WithoutCaller()
-			mw.Info("HTTP Request")
+
+			if reqBody != "" {
+				mw.Info("HTTP Request", zap.String("request_body", reqBody))
+			} else {
+				mw.Info("HTTP Request")
+			}
+
 			next.ServeHTTP(rw, r.WithContext(ctx))
 
-			mw.Info("HTTP Response",
+			respFields := []zap.Field{
 				zap.Int("status", rw.statusCode),
 				zap.Int("response_size", rw.size),
 				zap.String("latency", time.Since(start).String()),
-			)
+			}
+			if bodyEnabled && isBodyLoggable(rw.Header().Get("Content-Type")) {
+				if b := captureBody(rw.body.Bytes(), bodyMax, rw.Header().Get("Content-Type")); b != "" {
+					respFields = append(respFields, zap.String("response_body", b))
+				}
+			}
+			mw.Info("HTTP Response", respFields...)
 		})
 	}
 }
@@ -70,6 +95,8 @@ type responseWriter struct {
 	http.ResponseWriter
 	statusCode int
 	size       int
+	body       bytes.Buffer // captured response body (empty unless bodyLimit > 0)
+	bodyLimit  int          // max bytes to capture; 0 disables capture
 }
 
 func (rw *responseWriter) WriteHeader(code int) {
@@ -80,6 +107,13 @@ func (rw *responseWriter) WriteHeader(code int) {
 func (rw *responseWriter) Write(b []byte) (int, error) {
 	n, err := rw.ResponseWriter.Write(b)
 	rw.size += n
+	if rw.bodyLimit > 0 && rw.body.Len() <= rw.bodyLimit {
+		if remaining := rw.bodyLimit + 1 - rw.body.Len(); len(b) > remaining {
+			rw.body.Write(b[:remaining])
+		} else {
+			rw.body.Write(b)
+		}
+	}
 	return n, err
 }
 

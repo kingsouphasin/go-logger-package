@@ -12,7 +12,7 @@ github.com/kingsouphasin/go-logger-package
 
 - **Zero-config** — works out of the box with sensible defaults
 - **Dual output** — writes to console and a rotating file simultaneously
-- **Log rotation** — size-based and daily time-based (whichever comes first)
+- **Log rotation** — size-based, with gzip compression of old files
 - **Environment-driven config** — all settings via `.env` or environment variables
 - **Development & production modes** — colored console output in dev, JSON in prod
 - **Context propagation** — carry a logger through `context.Context`
@@ -20,6 +20,7 @@ github.com/kingsouphasin/go-logger-package
 - **Request enrichment** — auto-logs `request_id`, IP, user-agent, sizes, latency
 - **`Handle` wrapper** — logger injected directly into handlers, no `FromContext` call needed
 - **File upload safety** — logs multipart file metadata (name, size) but never file content
+- **Opt-in body logging** — capture request/response bodies with JSON key redaction and truncation
 - **Sensitive query redaction** — tokens, API keys, passwords are automatically masked
 
 ---
@@ -203,12 +204,38 @@ LOGGER_MAX_BACKUPS=30
 LOGGER_MAX_AGE_DAYS=30
 
 # Gzip-compress rotated files
-LOGGER_COMPRESS=false
+LOGGER_COMPRESS=true
+
+# Log HTTP request/response body content (middleware). Off by default.
+LOGGER_LOG_BODY=false
+
+# Max bytes of a body to log when LOGGER_LOG_BODY is enabled (truncated beyond this)
+LOGGER_MAX_BODY_BYTES=4096
 ```
 
 ### Log rotation
 
-Rotation triggers on whichever comes first: the file reaching `LOGGER_MAX_SIZE_MB`, or midnight (daily). Old files are cleaned up based on `LOGGER_MAX_BACKUPS` and `LOGGER_MAX_AGE_DAYS`.
+Rotation triggers when the file reaches `LOGGER_MAX_SIZE_MB`. The current file is
+renamed to a timestamped backup (gzip-compressed when `LOGGER_COMPRESS=true`) and a
+fresh log file is created. Old files are cleaned up based on `LOGGER_MAX_BACKUPS` and
+`LOGGER_MAX_AGE_DAYS`.
+
+> **Run one instance per log file.** Like every Go file-rotating logger, this package
+> is not multi-process safe — two processes writing the same file will corrupt each
+> other's rotation. In dev, make sure a previous run has fully exited before starting a new one.
+
+### HTTP body logging
+
+Set `LOGGER_LOG_BODY=true` to have the middleware log request and response **body
+content** as `request_body` / `response_body` fields. Safety rules:
+
+- **Off by default** — no capture, no cost unless enabled.
+- **Text/JSON only** — `application/json`, `text/*`, `x-www-form-urlencoded`. Multipart
+  and binary are skipped (uploads are logged as file metadata, as before).
+- **Redaction** — JSON bodies have sensitive keys (`password`, `token`, `secret`,
+  `signature`, `sign`, …) replaced with `[redacted]`, recursively.
+- **Truncation** — bodies longer than `LOGGER_MAX_BODY_BYTES` (default 4096) are cut with
+  a `...[truncated]` marker.
 
 ---
 
@@ -236,6 +263,8 @@ func main() {
         MaxAgeDays: 7,
         Compress:   true,
         Caller:     true,
+        LogBody:      true, // capture request/response bodies (middleware)
+        MaxBodyBytes: 4096,
     })
     if err != nil {
         fmt.Println("failed to init logger:", err)
@@ -575,6 +604,16 @@ Request URL:  /search?q=golang&api_key=my-secret&page=2
 Logged query: api_key=%5Bredacted%5D&page=2&q=golang
 ```
 
+### Body logging (`LOGGER_LOG_BODY=true`)
+
+Request/response bodies are logged with JSON sensitive keys redacted and content
+truncated to `LOGGER_MAX_BODY_BYTES`:
+
+```
+Request body: {"user":"alice","password":"secret","amount":100}
+Logged:       "request_body": "{\"amount\":100,\"password\":\"[redacted]\",\"user\":\"alice\"}"
+```
+
 ---
 
 ## Config Reference
@@ -590,7 +629,9 @@ Logged query: api_key=%5Bredacted%5D&page=2&q=golang
 | `LOGGER_MAX_SIZE_MB`    | int     | `100`              | Max file size before rotation (MB)        |
 | `LOGGER_MAX_BACKUPS`    | int     | `30`               | Max number of old log files to keep       |
 | `LOGGER_MAX_AGE_DAYS`   | int     | `30`               | Max age of old log files (days)           |
-| `LOGGER_COMPRESS`       | bool    | `false`            | Gzip-compress rotated files               |
+| `LOGGER_COMPRESS`       | bool    | `true`             | Gzip-compress rotated files               |
+| `LOGGER_LOG_BODY`       | bool    | `false`            | Log HTTP request/response body (middleware) |
+| `LOGGER_MAX_BODY_BYTES` | int     | `4096`             | Max body bytes to log when body logging on |
 
 ---
 
@@ -612,3 +653,5 @@ Every middleware logs these fields automatically on each request:
 | `response_size` | int      | Actual bytes written in the response body           |
 | `latency`       | duration | Total time from request received to response sent   |
 | `uploaded_files`| array    | Only for `multipart/form-data` — `name`, `size`, `content_type` per file |
+| `request_body`  | string   | Only when `LOGGER_LOG_BODY=true` — request body, redacted + truncated (text/JSON only) |
+| `response_body` | string   | Only when `LOGGER_LOG_BODY=true` — response body, redacted + truncated (text/JSON only) |

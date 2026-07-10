@@ -4,10 +4,25 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
+
+// Body-logging settings, shared with the middleware modules via BodyConfig().
+// Set whenever a logger is built from a Config (init() and any explicit New()).
+var (
+	bodyLogEnabled atomic.Bool
+	bodyLogMax     atomic.Int64
+)
+
+// BodyConfig reports whether HTTP request/response bodies should be logged by
+// the middleware and the maximum number of bytes to log per body. It reflects
+// the most recently built logger's configuration.
+func BodyConfig() (enabled bool, maxBytes int) {
+	return bodyLogEnabled.Load(), int(bodyLogMax.Load())
+}
 
 type zapLogger struct {
 	z     *zap.Logger // skip 1 — for Logger interface method calls
@@ -38,6 +53,9 @@ func New(cfg Config) (Logger, error) {
 		lj := newRotatingWriter(cfg)
 		cores = append(cores, zapcore.NewCore(enc, zapcore.AddSync(lj), level))
 	}
+
+	bodyLogEnabled.Store(cfg.LogBody)
+	bodyLogMax.Store(int64(cfg.MaxBodyBytes))
 
 	base := zap.New(zapcore.NewTee(cores...), zap.WithCaller(cfg.Caller))
 	z := base.WithOptions(zap.AddCallerSkip(1))

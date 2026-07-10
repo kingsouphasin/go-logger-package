@@ -42,20 +42,32 @@ type Config struct {
 
 	// Compress gzip-compresses rotated log files to save disk space. Default: true.
 	Compress bool
+
+	// LogBody enables logging of HTTP request and response body content by the
+	// middleware. Bodies are captured only for text/JSON content types, JSON
+	// sensitive keys are redacted, and content is truncated to MaxBodyBytes.
+	// Default: false.
+	LogBody bool
+
+	// MaxBodyBytes is the maximum number of bytes of a request or response body
+	// to log when LogBody is enabled. Longer bodies are truncated. Default: 4096.
+	MaxBodyBytes int
 }
 
 func defaultConfig() Config {
 	return Config{
-		Env:        "production",
-		Level:      "info",
-		Caller:     false,
-		Console:    true,
-		File:       true,
-		FilePath:   "./logs/app.log",
-		MaxSizeMB:  100,
-		MaxBackups: 30,
-		MaxAgeDays: 30,
-		Compress:   true,
+		Env:          "production",
+		Level:        "info",
+		Caller:       false,
+		Console:      true,
+		File:         true,
+		FilePath:     "./logs/app.log",
+		MaxSizeMB:    100,
+		MaxBackups:   30,
+		MaxAgeDays:   30,
+		Compress:     true,
+		LogBody:      false,
+		MaxBodyBytes: 4096,
 	}
 }
 
@@ -91,6 +103,12 @@ func LoadConfig() Config {
 	}
 	if v := os.Getenv("LOGGER_COMPRESS"); v != "" {
 		cfg.Compress = parseBool(v, cfg.Compress)
+	}
+	if v := os.Getenv("LOGGER_LOG_BODY"); v != "" {
+		cfg.LogBody = parseBool(v, cfg.LogBody)
+	}
+	if v := os.Getenv("LOGGER_MAX_BODY_BYTES"); v != "" {
+		cfg.MaxBodyBytes = parseInt(v, cfg.MaxBodyBytes)
 	}
 	return cfg
 }

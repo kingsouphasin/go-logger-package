@@ -10,7 +10,9 @@
       "Bash(cat \"/Users/mac/Desktop/LBB/lbb-customer/AMG-Service/Makefile\")",
       "Read(//Users/mac/Desktop/LBB/lbb-customer/AMG-Service/**)",
       "Bash(ps aux *)",
-      "Read(//Users/mac/Desktop/LBB/lbb-customer/AMG-Service/logs/**)"
+      "Read(//Users/mac/Desktop/LBB/lbb-customer/AMG-Service/logs/**)",
+      "Bash(gofmt -w .)",
+      "Bash(go build *)"
     ],
     "additionalDirectories": [
       "/Users/mac/Desktop/Logger-package/middleware"

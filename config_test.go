@@ -11,6 +11,7 @@ func TestDefaultConfig(t *testing.T) {
 		"LOGGER_ENV", "LOGGER_LEVEL", "LOGGER_CALLER",
 		"LOGGER_CONSOLE", "LOGGER_FILE", "LOGGER_FILE_PATH",
 		"LOGGER_MAX_SIZE_MB", "LOGGER_MAX_BACKUPS", "LOGGER_MAX_AGE_DAYS", "LOGGER_COMPRESS",
+		"LOGGER_LOG_BODY", "LOGGER_MAX_BODY_BYTES",
 	} {
 		t.Setenv(key, "")
 	}
@@ -25,6 +26,8 @@ func TestDefaultConfig(t *testing.T) {
 	assert.Equal(t, 30, cfg.MaxBackups)
 	assert.Equal(t, 30, cfg.MaxAgeDays)
 	assert.True(t, cfg.Compress)
+	assert.False(t, cfg.LogBody)
+	assert.Equal(t, 4096, cfg.MaxBodyBytes)
 }
 
 func TestConfigFromEnv(t *testing.T) {
@@ -38,6 +41,8 @@ func TestConfigFromEnv(t *testing.T) {
 	t.Setenv("LOGGER_MAX_BACKUPS", "5")
 	t.Setenv("LOGGER_MAX_AGE_DAYS", "7")
 	t.Setenv("LOGGER_COMPRESS", "true")
+	t.Setenv("LOGGER_LOG_BODY", "true")
+	t.Setenv("LOGGER_MAX_BODY_BYTES", "8192")
 
 	cfg := LoadConfig()
 	assert.Equal(t, "development", cfg.Env)
@@ -50,6 +55,8 @@ func TestConfigFromEnv(t *testing.T) {
 	assert.Equal(t, 5, cfg.MaxBackups)
 	assert.Equal(t, 7, cfg.MaxAgeDays)
 	assert.True(t, cfg.Compress)
+	assert.True(t, cfg.LogBody)
+	assert.Equal(t, 8192, cfg.MaxBodyBytes)
 }
 
 func TestInvalidIntFallsBackToDefault(t *testing.T) {

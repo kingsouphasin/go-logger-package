@@ -1,6 +1,8 @@
 package ginlogger
 
 import (
+	"bytes"
+	"io"
 	"net/url"
 	"strings"
 	"time"
@@ -29,6 +31,8 @@ func Middleware() gin.HandlerFunc {
 		}
 		c.Header("X-Request-ID", requestID)
 
+		bodyEnabled, bodyMax := logger.BodyConfig()
+
 		contentType := c.ContentType()
 
 		log := logger.With(
@@ -42,26 +46,78 @@ func Middleware() gin.HandlerFunc {
 			zap.Int64("request_size", c.Request.ContentLength),
 		)
 
+		var reqBody string
 		if strings.Contains(contentType, "multipart/form-data") {
 			if files := fileUploads(c); len(files) > 0 {
 				log = log.With(zap.Any("uploaded_files", files))
 			}
+		} else if bodyEnabled && isBodyLoggable(contentType) {
+			if raw, err := io.ReadAll(c.Request.Body); err == nil {
+				c.Request.Body = io.NopCloser(bytes.NewReader(raw)) // restore for the handler
+				reqBody = captureBody(raw, bodyMax, contentType)
+			}
+		}
+
+		var bw *bodyWriter
+		if bodyEnabled {
+			bw = &bodyWriter{ResponseWriter: c.Writer, bodyLimit: bodyMax}
+			c.Writer = bw
 		}
 
 		ctx := logger.WithContext(c.Request.Context(), log)
 		c.Request = c.Request.WithContext(ctx)
 
 		mw := log.WithoutCaller()
-		mw.Info("HTTP Request")
+
+		if reqBody != "" {
+			mw.Info("HTTP Request", zap.String("request_body", reqBody))
+		} else {
+			mw.Info("HTTP Request")
+		}
+
 		c.Next()
 
-		mw.Info("HTTP Response",
+		respFields := []zap.Field{
 			zap.String("route", c.FullPath()),
 			zap.Int("status", c.Writer.Status()),
 			zap.Int("response_size", c.Writer.Size()),
 			zap.String("latency", time.Since(start).String()),
-		)
+		}
+		if bw != nil && isBodyLoggable(c.Writer.Header().Get("Content-Type")) {
+			if b := captureBody(bw.body.Bytes(), bodyMax, c.Writer.Header().Get("Content-Type")); b != "" {
+				respFields = append(respFields, zap.String("response_body", b))
+			}
+		}
+		mw.Info("HTTP Response", respFields...)
 	}
+}
+
+// bodyWriter wraps gin's ResponseWriter to capture up to bodyLimit+1 bytes of
+// the response body while passing writes through unchanged.
+type bodyWriter struct {
+	gin.ResponseWriter
+	body      bytes.Buffer
+	bodyLimit int
+}
+
+func (w *bodyWriter) capture(b []byte) {
+	if w.bodyLimit > 0 && w.body.Len() <= w.bodyLimit {
+		if remaining := w.bodyLimit + 1 - w.body.Len(); len(b) > remaining {
+			w.body.Write(b[:remaining])
+		} else {
+			w.body.Write(b)
+		}
+	}
+}
+
+func (w *bodyWriter) Write(b []byte) (int, error) {
+	w.capture(b)
+	return w.ResponseWriter.Write(b)
+}
+
+func (w *bodyWriter) WriteString(s string) (int, error) {
+	w.capture([]byte(s))
+	return w.ResponseWriter.WriteString(s)
 }
 
 var sensitiveQueryKeys = map[string]struct{}{

@@ -1,6 +1,9 @@
 package echologger
 
 import (
+	"bytes"
+	"io"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -30,6 +33,8 @@ func Middleware() echo.MiddlewareFunc {
 			}
 			c.Response().Header().Set("X-Request-ID", requestID)
 
+			bodyEnabled, bodyMax := logger.BodyConfig()
+
 			contentType := c.Request().Header.Get("Content-Type")
 			log := logger.With(
 				zap.String("request_id", requestID),
@@ -42,17 +47,35 @@ func Middleware() echo.MiddlewareFunc {
 				zap.Int64("request_size", c.Request().ContentLength),
 			)
 
+			var reqBody string
 			if strings.Contains(contentType, "multipart/form-data") {
 				if files := fileUploads(c); len(files) > 0 {
 					log = log.With(zap.Any("uploaded_files", files))
 				}
+			} else if bodyEnabled && isBodyLoggable(contentType) {
+				if raw, err := io.ReadAll(c.Request().Body); err == nil {
+					c.Request().Body = io.NopCloser(bytes.NewReader(raw)) // restore for the handler
+					reqBody = captureBody(raw, bodyMax, contentType)
+				}
+			}
+
+			var bw *bodyWriter
+			if bodyEnabled {
+				bw = &bodyWriter{ResponseWriter: c.Response().Writer, bodyLimit: bodyMax}
+				c.Response().Writer = bw
 			}
 
 			ctx := logger.WithContext(c.Request().Context(), log)
 			c.SetRequest(c.Request().WithContext(ctx))
 
 			mw := log.WithoutCaller()
-			mw.Info("HTTP Request")
+
+			if reqBody != "" {
+				mw.Info("HTTP Request", zap.String("request_body", reqBody))
+			} else {
+				mw.Info("HTTP Request")
+			}
+
 			err := next(c)
 
 			status := c.Response().Status
@@ -60,14 +83,45 @@ func Middleware() echo.MiddlewareFunc {
 				status = he.Code
 			}
 
-			mw.Info("HTTP Response",
+			respFields := []zap.Field{
 				zap.String("route", c.Path()),
 				zap.Int("status", status),
 				zap.Int64("response_size", c.Response().Size),
 				zap.String("latency", time.Since(start).String()),
-			)
+			}
+			if bw != nil && isBodyLoggable(c.Response().Header().Get("Content-Type")) {
+				if b := captureBody(bw.body.Bytes(), bodyMax, c.Response().Header().Get("Content-Type")); b != "" {
+					respFields = append(respFields, zap.String("response_body", b))
+				}
+			}
+			mw.Info("HTTP Response", respFields...)
 			return err
 		}
+	}
+}
+
+// bodyWriter wraps the echo response writer to capture up to bodyLimit+1 bytes
+// of the response body while passing writes through unchanged.
+type bodyWriter struct {
+	http.ResponseWriter
+	body      bytes.Buffer
+	bodyLimit int
+}
+
+func (w *bodyWriter) Write(b []byte) (int, error) {
+	if w.bodyLimit > 0 && w.body.Len() <= w.bodyLimit {
+		if remaining := w.bodyLimit + 1 - w.body.Len(); len(b) > remaining {
+			w.body.Write(b[:remaining])
+		} else {
+			w.body.Write(b)
+		}
+	}
+	return w.ResponseWriter.Write(b)
+}
+
+func (w *bodyWriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
 	}
 }
 
