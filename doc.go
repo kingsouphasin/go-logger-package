@@ -39,14 +39,25 @@
 //	LOGGER_FILE_PATH    path to log file (default: ./logs/app.log)
 //	LOGGER_MAX_SIZE_MB  rotate after N MB (default: 100)
 //	LOGGER_MAX_BACKUPS  max old files to keep (default: 30)
-//	LOGGER_MAX_AGE_DAYS max age of old files in days (default: 30)
-//	LOGGER_COMPRESS     gzip rotated files (default: false)
+//	LOGGER_MAX_AGE_DAYS   max age of old files in days (default: 30)
+//	LOGGER_COMPRESS       gzip rotated files (default: true)
+//	LOGGER_LOG_BODY       log HTTP request/response bodies, middleware (default: false)
+//	LOGGER_MAX_BODY_BYTES max body bytes to log when enabled (default: 4096)
 //
 // # Log rotation
 //
-// Logs rotate on whichever comes first: the file reaching MaxSizeMB, or
-// midnight (daily). Old files are cleaned up based on MaxBackups and
-// MaxAgeDays.
+// Logs rotate when the file reaches MaxSizeMB: the current file is renamed to a
+// timestamped backup (gzip-compressed when Compress is true) and a fresh file is
+// created. Old files are cleaned up based on MaxBackups and MaxAgeDays. Run one
+// process per log file — like every Go file-rotating logger, this package is not
+// multi-process safe.
+//
+// # HTTP body logging
+//
+// Set LOGGER_LOG_BODY=true to have the middleware log request and response body
+// content as request_body/response_body fields. Only text/JSON content types are
+// captured (multipart and binary are skipped), JSON sensitive keys are redacted,
+// and content is truncated to LOGGER_MAX_BODY_BYTES.
 //
 // # Output modes
 //
